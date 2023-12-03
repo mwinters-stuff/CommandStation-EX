@@ -67,7 +67,7 @@ class WifiInboundHandler {
    void purgeCurrentCIPSEND();
    Stream * wifiStream;
    
-   static const int INBOUND_RING = 512;
+   static const int INBOUND_RING = 1024;
    static const int OUTBOUND_RING = sizeof(void*)==2?2048:8192;
  
    static const int CIPSENDgap=100; // millis() between retries of cipsend. 

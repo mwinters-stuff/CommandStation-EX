@@ -31,6 +31,7 @@
 #include "DCC.h"
 #include "TrackManager.h"
 #include "StringFormatter.h"
+#include "Websockets.h"
 
 // variables to hold clock time
 int16_t lastclocktime;
@@ -72,6 +73,11 @@ void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream
   // client is using the DCC++ protocol where all commands start
   // with '<'
   if (clients[clientId] == NONE_TYPE) {
+    auto websock=Websockets::checkConnectionString(clientId,buffer,stream);
+    if (websock) {
+      clients[clientId]=COMMAND_TYPE;
+      return;
+    }
     if (buffer[0] == '<')
       clients[clientId]=COMMAND_TYPE;
     else
