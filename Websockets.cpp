@@ -1,3 +1,50 @@
+/*
+ *  © 2023 Chris Harlow
+ *  All rights reserved.
+ *
+ *  This file is part of CommandStation-EX
+ *
+ *  This is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  It is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
+/**************************************************
+  HOW IT WORKS
+
+  1) Refer to https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers
+  
+  2) When a new client sends in a socket stream, the
+     CommandDistributor pass it to this code 
+     checkConnectionString() to check for an HTTP
+     protocol GET requesting a change to websocket protocol.
+     If that is found, the relevant answer is generated and queued and
+     the CommandDistributor marks this client as a websocket client awaiting connection.
+     Once the outbound handshake has completed, the CommandDistributor promotes the client
+     from awaiting connection to connected websocket so that all
+     future traffic for this client is handled with websocket protocol.
+
+  3) When an input is received from a client marked as websocket,
+     CommandDistributor calls  unmask() to strip off the websocket header and
+     un-mask the input bytes. The command distributor will flag the
+     clientid in the ringstream so that anyone transmitting this
+     output will know to handle it differently.   
+
+   4) when the  Wifi/Ethernet handler needs to transmit the result from the
+      output ring, it recognises the websockets flag and adds the websocket 
+      header to the output dynamically. 
+
+ *************************************************************/
 #include <Arduino.h>
 #include "FSH.h"
 #include "RingStream.h"
@@ -92,10 +139,6 @@ byte * Websockets::unmask(byte clientId,RingStream *ring, byte * buffer) {
        buffer[4],buffer[5],buffer[6]);
 
  byte opcode=buffer[0];
- if (opcode!=0x81) {
-  DIAG(F("unknown opcode "));
-  return nullptr;
- }
  bool maskbit=buffer[1]&0x80;
  int16_t payloadLength=buffer[1]&0x7f;
  
@@ -107,10 +150,23 @@ byte * Websockets::unmask(byte clientId,RingStream *ring, byte * buffer) {
      payloadLength=(buffer[3]<<8)|(buffer[2]);
      mask=buffer+4;
  }
- DIAG(F("Websock mb=%b pl=%d m=%x %x %x %x"), maskbit, payloadLength, 
+ DIAG(F("Websock op=%x mb=%b pl=%d m=%x %x %x %x"), opcode, maskbit, payloadLength, 
       mask[0],mask[1],mask[2], mask[3]);
 
- if (payloadLength>100) return nullptr;  // remove this check
+ if (opcode==0x89) { // ping
+     DIAG(F("Websocket ping"));
+     buffer[0]=0x8a;  // pong.. and send it back
+     ring->mark(clientId &0x7f); // dont readjust
+     ring->print((char *)buffer);
+     ring->commit();
+     return nullptr; 
+     }
+     
+ if (opcode!=0x81) {
+  DIAG(F("Websocket unknown opcode 0x%x"),opcode);
+  return nullptr;
+ }
+ 
  byte * payload=mask+4;
  for (int i=0;i<payloadLength;i++) {
      payload[i]^=mask[i%4];

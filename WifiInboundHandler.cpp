@@ -122,7 +122,7 @@ WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
            if (websocket) Websockets::writeOutboundHeader(wifiStream,currentReplySize); 
            for (int i=0;i<currentReplySize;i++) {
              int cout=outboundRing->read();
-             if (websocket && (cout=='\n')) cout=' ';
+             if (websocket && (cout=='\n')) cout='\r';
              wifiStream->write(cout);
              if (Diag::WIFI) StringFormatter::printEscape(cout); // DIAG in disguise
            }

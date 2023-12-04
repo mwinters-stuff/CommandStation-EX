@@ -1,3 +1,7 @@
+// For DCC-EX: This file downloaded from:
+//  https://github.com/Links2004/arduinoWebSockets
+// All due credit to Steve Reid
+
 /* from valgrind tests */
 
 /* ================ sha1.c ================ */
