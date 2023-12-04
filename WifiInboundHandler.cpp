@@ -1,8 +1,7 @@
 /*
  *  © 2021 Fred Decker
  *  © 2021 Fred Decker
- *  © 2020-2021 Chris Harlow
- *  © 2020, Chris Harlow. All rights reserved.
+ *  © 2020-2023, Chris Harlow. All rights reserved.
  *  © 2020, Harald Barth.
  *  
  *  This file is part of Asbelos DCC API
@@ -26,6 +25,7 @@
 #include "RingStream.h"
 #include "CommandDistributor.h"
 #include "DIAG.h"
+#include "Websockets.h"
 
 WifiInboundHandler * WifiInboundHandler::singleton;
 
@@ -67,8 +67,13 @@ void WifiInboundHandler::loop1() {
     
 
     if (pendingCipsend && millis()-lastCIPSEND > CIPSENDgap) {
-         if (Diag::WIFI) DIAG( F("WiFi: [[CIPSEND=%d,%d]]"), clientPendingCIPSEND, currentReplySize);
-         StringFormatter::send(wifiStream, F("AT+CIPSEND=%d,%d\r\n"),  clientPendingCIPSEND, currentReplySize);
+         // add allowances for websockets
+         bool websocket=clientPendingCIPSEND & Websockets::WEBSOCK_CLIENT_MARKER;
+         byte realClient=clientPendingCIPSEND & ~Websockets::WEBSOCK_CLIENT_MARKER;
+         int16_t realSize=currentReplySize;
+         if (websocket) realSize+=Websockets::getOutboundHeaderSize(currentReplySize);
+         if (Diag::WIFI) DIAG( F("WiFi: [[CIPSEND=%d,%d]]"), realClient, realSize);
+         StringFormatter::send(wifiStream, F("AT+CIPSEND=%d,%d\r\n"),  realClient,realSize);
          pendingCipsend=false;
          return;
       }
@@ -112,9 +117,12 @@ WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
         }
         
         if (ch=='>') { 
-           if (Diag::WIFI) DIAG(F("[XMIT %d]"),currentReplySize); 
+           bool websocket=clientPendingCIPSEND & Websockets::WEBSOCK_CLIENT_MARKER; 
+           if (Diag::WIFI) DIAG(F("[XMIT %d ws=%b]"),currentReplySize,websocket);
+           if (websocket) Websockets::writeOutboundHeader(wifiStream,currentReplySize); 
            for (int i=0;i<currentReplySize;i++) {
              int cout=outboundRing->read();
+             if (websocket && (cout=='\n')) cout=' ';
              wifiStream->write(cout);
              if (Diag::WIFI) StringFormatter::printEscape(cout); // DIAG in disguise
            }

@@ -59,7 +59,7 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
     SHA1Update(&ctx, (unsigned char *)replyKey, strlen(replyKey));
     SHA1Final(sha1HashBin, &ctx);
       
-    // ghenerate the response and embed the base64 encode 
+    // generate the response and embed the base64 encode 
     // of the key
     outbound->mark(clientId);
     outbound->print("HTTP/1.1 101 Switching Protocols\r\n"
@@ -83,4 +83,62 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
     outbound->commit();
     return true;          
 }
+
+byte * Websockets::unmask(byte clientId,RingStream *ring, byte * buffer) {
+ // buffer should have a websocket header
+ //byte opcode=buffer[0] & 0x0f;
+ DIAG(F("Websock in: %x %x %x %x %x %x %x %x"),
+      buffer[0],buffer[1],buffer[2],buffer[3],
+       buffer[4],buffer[5],buffer[6]);
+
+ byte opcode=buffer[0];
+ if (opcode!=0x81) {
+  DIAG(F("unknown opcode "));
+  return nullptr;
+ }
+ bool maskbit=buffer[1]&0x80;
+ int16_t payloadLength=buffer[1]&0x7f;
+ 
+ byte * mask;
+ if (payloadLength<126) {
+     mask=buffer+2;
+     }
+ else {
+     payloadLength=(buffer[3]<<8)|(buffer[2]);
+     mask=buffer+4;
+ }
+ DIAG(F("Websock mb=%b pl=%d m=%x %x %x %x"), maskbit, payloadLength, 
+      mask[0],mask[1],mask[2], mask[3]);
+
+ if (payloadLength>100) return nullptr;  // remove this check
+ byte * payload=mask+4;
+ for (int i=0;i<payloadLength;i++) {
+     payload[i]^=mask[i%4];
+ }
+ 
+ return payload; // payload will be parsed as normal
+     
+ }
+
+ int16_t Websockets::getOutboundHeaderSize(uint16_t dataLength) {
+   return (dataLength>=126)? 4:2;
+ }
+
+ void Websockets::writeOutboundHeader(Print * stream,uint16_t dataLength) {
+    // write the outbound header 
+    // length patched if necessary.
+    // text opcode, flag(126= use 2 length bytes, no mask bit) , length
+    if (dataLength>=126) {
+      const byte prefix[]={0x81,126,
+           (byte)(dataLength & 0xFF), (byte)(dataLength>>8)}; 
+      stream->write(prefix,sizeof(prefix));
+    }
+    else {
+      const byte prefix[]={0x81,(byte)dataLength}; 
+      stream->write(prefix,sizeof(prefix));
+    }
+     
+ }
+
+
 

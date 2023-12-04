@@ -75,7 +75,7 @@ void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream
   if (clients[clientId] == NONE_TYPE) {
     auto websock=Websockets::checkConnectionString(clientId,buffer,stream);
     if (websock) {
-      clients[clientId]=COMMAND_TYPE;
+      clients[clientId]=WEBSOCK_CONNECTING_TYPE;
       return;
     }
     if (buffer[0] == '<')
@@ -84,16 +84,28 @@ void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream
       clients[clientId]=WITHROTTLE_TYPE;
   }
 
+  // after first inbound transmission the websocket is connected
+  if (clients[clientId]==WEBSOCK_CONNECTING_TYPE)
+      clients[clientId]=WEBSOCKET_TYPE;
+      
+      
   // mark buffer that is sent to parser
-  ring->mark(clientId);
-
   // When type is known, send the string
   // to the right parser
   if (clients[clientId] == COMMAND_TYPE) {
+    ring->mark(clientId);
     DCCEXParser::parse(stream, buffer, ring);
   } else if (clients[clientId] == WITHROTTLE_TYPE) {
+    ring->mark(clientId);
     WiThrottle::getThrottle(clientId)->parse(ring, buffer);
   }
+  else if (clients[clientId] == WEBSOCKET_TYPE) {
+    buffer=Websockets::unmask(clientId,ring, buffer);
+    if (!buffer) return; // unmask may have handled it alrerday (ping/pong)
+    // mark ring with client flagged as websocket for transmission later
+    ring->mark(clientId | Websockets::WEBSOCK_CLIENT_MARKER);
+    DCCEXParser::parse(stream, buffer, ring);
+    }
 
   if (ring->peekTargetMark()!=RingStream::NO_CLIENT) {
     // The commit call will either write the length bytes
