@@ -85,7 +85,7 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
    
    // check contents to find Sec-WebSocket-Key: and get key up to \n 
    if (strlen((char*)cmd)<200) return false;
-   auto keyPos=strstr((char*)cmd,"Sec-WebSocket-Key: ");
+   auto keyPos=strstr_P((char*)cmd,(char*)F("Sec-WebSocket-Key: "));
    if (!keyPos) return false;
    keyPos+=19; // length of Sec-Websocket-Key: 
    auto endkeypos=strstr(keyPos,"\r");
@@ -97,7 +97,7 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
     uint8_t sha1HashBin[21] = { 0 }; // 21 to make it base64 div 3
     char replyKey[100];
     strlcpy(replyKey,keyPos, sizeof(replyKey));
-    strlcat(replyKey,"258EAFA5-E914-47DA-95CA-C5AB0DC85B11", sizeof(replyKey));
+    strlcat_P(replyKey,(char*)F("258EAFA5-E914-47DA-95CA-C5AB0DC85B11"), sizeof(replyKey));
      
      DIAG(F("websock replykey=%s"),replyKey);
 
@@ -109,14 +109,14 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
     // generate the response and embed the base64 encode 
     // of the key
     outbound->mark(clientId);
-    outbound->print("HTTP/1.1 101 Switching Protocols\r\n"
+    outbound->print(F("HTTP/1.1 101 Switching Protocols\r\n"
                     "Server: DCCEX-WebSocketsServer\r\n"
                     "Upgrade: websocket\r\n"
                     "Connection: Upgrade\r\n"
                     "Origin: null\r\n"
                     "Sec-WebSocket-Version: 13\r\n"
                     "Sec-WebSocket-Protocol: DCCEX\r\n"
-                    "Sec-WebSocket-Accept: ");
+                    "Sec-WebSocket-Accept: "));
 // encode and emit the reply key as base 64
     auto * tmp=sha1HashBin;
     for (int i=0;i<7;i++) { 
@@ -126,7 +126,7 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
       if (i<6) outbound->print(b64_table[tmp[2] & 0x3f]);
       tmp+=3;
     }
-    outbound->print("=\r\n\r\n");  // because we have padded 1 byte
+    outbound->print(F("=\r\n\r\n"));  // because we have padded 1 byte
     outbound->commit();
     return true;          
 }

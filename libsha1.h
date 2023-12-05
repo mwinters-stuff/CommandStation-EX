@@ -9,8 +9,9 @@ By Steve Reid <steve@edmweb.com>
 100% Public Domain
 */
 
-#if !defined(ESP8266) && !defined(ESP32)
-
+// DCC-EX REMOVED #if !defined(ESP8266) && !defined(ESP32)
+#ifndef libsha1_h
+#define libsha1_h
 typedef struct {
     uint32_t state[5];
     uint32_t count[2];

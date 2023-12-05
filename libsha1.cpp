@@ -22,7 +22,7 @@ A million repetitions of "a"
 /* #define LITTLE_ENDIAN * This should be #define'd already, if true. */
 /* #define SHA1HANDSOFF * Copies data before messing with it. */
 
-#if !defined(ESP8266) && !defined(ESP32)
+// DCC-EX removed  #if !defined(ESP8266) && !defined(ESP32)
 
 #define SHA1HANDSOFF
 
@@ -203,4 +203,4 @@ void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
 /* ================ end of sha1.c ================ */
 
 
-#endif
+// DCC-EX Removed: #endif
