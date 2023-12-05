@@ -84,7 +84,6 @@ bool Websockets::checkConnectionString(byte clientId,byte * cmd, RingStream * ou
     */
    
    // check contents to find Sec-WebSocket-Key: and get key up to \n 
-   if (strlen((char*)cmd)<200) return false;
    auto keyPos=strstr_P((char*)cmd,(char*)F("Sec-WebSocket-Key: "));
    if (!keyPos) return false;
    keyPos+=19; // length of Sec-Websocket-Key: 

@@ -99,6 +99,9 @@ void WifiInboundHandler::loop1() {
 // This is a Finite State Automation (FSA) handling the inbound bytes from an ES AT command processor    
 
 WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
+  const char WebSocketKeyName[]="Sec-WebSocket-Key: ";
+  static byte prescanPoint=0;
+
   while (wifiStream->available()) {
     int ch = wifiStream->read();
 
@@ -203,14 +206,19 @@ WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
             break;
           }
           if (Diag::WIFI) DIAG(F("Wifi inbound data(%d:%d):"),runningClientId,dataLength); 
-          if (inboundRing->freeSpace()<=(dataLength+1)) {
+          
+          // we normally dont read >100 bytes 
+          // so assume its an HTTP GET or similar
+         
+          if (dataLength<100 && inboundRing->freeSpace()<=(dataLength+1)) {
             // This input would overflow the inbound ring, ignore it  
             loopState=IPD_IGNORE_DATA;
             if (Diag::WIFI) DIAG(F("Wifi OVERFLOW IGNORING:"));    
             break;
           }
           inboundRing->mark(runningClientId);
-          loopState=IPD_DATA;
+          prescanPoint=0;
+          loopState=(dataLength>100)? IPD_PRESCAN: IPD_DATA;
           break; 
         }
         dataLength = dataLength * 10 + (ch - '0');
@@ -224,6 +232,38 @@ WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
           loopState = ANYTHING;
         }
         break;
+
+      case IPD_PRESCAN: // prescan reading data
+        dataLength--;
+        if (dataLength == 0) {
+          // Nothing found, this input is lost 
+          DIAG(F("Wifi prescan  not found"));
+          inboundRing->commit();    
+          loopState = ANYTHING;
+        }
+        if (ch!=WebSocketKeyName[prescanPoint]) {
+            prescanPoint=0;
+            break;
+        }
+        // matched the next char of the key
+        prescanPoint++;
+        if (WebSocketKeyName[prescanPoint]==0) {
+            DIAG(F("Wifi prescan found"));
+           // prescan has detected full key
+           inboundRing->print(WebSocketKeyName);
+           loopState=IPD_POSTSCAN; // continmue as normal
+        }
+        break;
+
+      case IPD_POSTSCAN: // reading data
+        inboundRing->write(ch);    
+        dataLength--;
+        if (ch=='\n') {
+          inboundRing->commit();    
+          loopState = IPD_IGNORE_DATA;
+        }
+        break;
+  
 
       case IPD_IGNORE_DATA: // ignoring data that would not fit in inbound ring
         dataLength--;
