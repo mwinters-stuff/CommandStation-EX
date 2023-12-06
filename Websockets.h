@@ -26,6 +26,7 @@ class Websockets {
     static bool checkConnectionString(byte clientId,byte * cmd, RingStream * outbound );
     static byte * unmask(byte clientId,RingStream *ring, byte * buffer);
     static int16_t getOutboundHeaderSize(uint16_t dataLength);
+    static int fillOutboundHeader(uint16_t dataLength, byte * buffer);
     static void writeOutboundHeader(Print * stream,uint16_t dataLength);
     static const byte WEBSOCK_CLIENT_MARKER=0x80;
 };

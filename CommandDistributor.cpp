@@ -63,8 +63,6 @@ template<typename... Targs> void CommandDistributor::broadcastReply(clientType t
 // Parse is called by Withrottle or Ethernet interface to determine which
 // protocol the client is using and call the appropriate part of dcc++Ex
 void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream) {
-  if (Diag::WIFI && Diag::CMD)
-    DIAG(F("Parse C=%d T=%d B=%s"),clientId, clients[clientId], buffer);
   ring=stream;
 
   // First check if the client is not known
@@ -206,7 +204,9 @@ void CommandDistributor::setClockTime(int16_t clocktime, int8_t clockrate, byte 
         // CAH. DIAG removed because LCD does it anyway. 
         LCD(6,F("Clk Time:%d Sp %d"), clocktime, clockrate);
         // look for an event for this time
+#ifdef EXRAIL_ACTIVE        
         RMFT2::clockEvent(clocktime,1);
+#endif        
         // Now tell everyone else what the time is.
         CommandDistributor::broadcastClockTime(clocktime, clockrate);
         lastclocktime = clocktime;

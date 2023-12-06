@@ -51,6 +51,10 @@
 #include "libsha1.h"
 #include "Websockets.h"
 #include "DIAG.h"
+#ifdef ARDUINO_ARCH_ESP32
+  // ESP32 runtime or definitions has strlcat_P missing 
+  #define strlcat_P strlcat
+#endif  
 static const char b64_table[] = {
   'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
   'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -179,21 +183,24 @@ byte * Websockets::unmask(byte clientId,RingStream *ring, byte * buffer) {
    return (dataLength>=126)? 4:2;
  }
 
- void Websockets::writeOutboundHeader(Print * stream,uint16_t dataLength) {
-    // write the outbound header 
-    // length patched if necessary.
+int Websockets::fillOutboundHeader(uint16_t dataLength, byte * buffer) {
     // text opcode, flag(126= use 2 length bytes, no mask bit) , length
-    if (dataLength>=126) {
-      const byte prefix[]={0x81,126,
-           (byte)(dataLength & 0xFF), (byte)(dataLength>>8)}; 
-      stream->write(prefix,sizeof(prefix));
+    buffer[0]=0x81;
+    if (dataLength<126) {
+         buffer[1]=(byte)dataLength;
+         return 2; 
     }
-    else {
-      const byte prefix[]={0x81,(byte)dataLength}; 
-      stream->write(prefix,sizeof(prefix));
-    }
-     
- }
-
+    buffer[1]=126;
+    buffer[2]=(byte)(dataLength & 0xFF);
+    buffer[3]= (byte)(dataLength>>8);
+    return 4;  
+}
+    
+ void Websockets::writeOutboundHeader(Print * stream,uint16_t dataLength) {
+    byte prefix[4];
+    int headerlen=fillOutboundHeader(dataLength,prefix);
+    stream->write(prefix,sizeof(headerlen));
+  }
+ 
 
 
