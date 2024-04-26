@@ -241,6 +241,8 @@ void EthernetInterface::loop2() {
       if (Diag::ETHERNET) DIAG(F("No outboundRing"));
       return;
     }
+    // Make sure mDNS continues to work!
+    mdns.run();
     // get client from the server
   #if defined (STM32_ETHERNET)
     // STM32Ethernet doesn't use accept(), just available()
@@ -252,24 +254,24 @@ void EthernetInterface::loop2() {
     if (client)
     {
         byte socket;
-	bool sockfound = false;
+      	bool sockfound = false;
         for (socket = 0; socket < MAX_SOCK_NUM; socket++) {
           if (clients[socket] && (clients[socket] == client)) {
-	    sockfound = true;
-	    if (Diag::ETHERNET) DIAG(F("Ethernet: Old client socket %d"),socket);
-	    break;
+	          sockfound = true;
+	        if (Diag::ETHERNET) DIAG(F("Ethernet: Old client socket %d"),socket);
+	        break;
           }
-	}
-	if (!sockfound) { // new client
-	  for (socket = 0; socket < MAX_SOCK_NUM; socket++) {
-	    if (!clients[socket]) {
-	      // On accept() the EthernetServer doesn't track the client anymore
-	      // so we store it in our client array
-	      clients[socket] = client;
-	      if (Diag::ETHERNET) DIAG(F("Ethernet: New client socket %d"),socket);
-	      break;
+	      }
+      	if (!sockfound) { // new client
+	        for (socket = 0; socket < MAX_SOCK_NUM; socket++) {
+	          if (!clients[socket]) {
+              // On accept() the EthernetServer doesn't track the client anymore
+              // so we store it in our client array
+              clients[socket] = client;
+              if (Diag::ETHERNET) DIAG(F("Ethernet: New client socket %d"),socket);
+              break;
             }
-	  }
+      	  }
         }
         if (socket==MAX_SOCK_NUM) DIAG(F("new Ethernet OVERFLOW")); 
     }
@@ -278,34 +280,33 @@ void EthernetInterface::loop2() {
     for (byte socket = 0; socket < MAX_SOCK_NUM; socket++)
     {
       if (clients[socket]) {
-	if (!clients[socket].connected()) { // stop any clients which disconnect
-	  CommandDistributor::forget(socket);
-	  clients[socket].stop();
+      	if (!clients[socket].connected()) { // stop any clients which disconnect
+	        CommandDistributor::forget(socket);
+	        clients[socket].stop();
   #if defined(ARDUINO_ARCH_AVR)
-	  clients[socket]=NULL;
+	        clients[socket]=NULL;
   #else
-	  clients[socket]=(EthernetClient)nullptr;
+	        clients[socket]=(EthernetClient)nullptr;
   #endif
-	  //if (Diag::ETHERNET)
-	  DIAG(F("Ethernet: disconnect %d "), socket);
-	  return; // Trick: So that we do not continue in this loop with client that is NULL
-	}
+	        //if (Diag::ETHERNET)
+	        DIAG(F("Ethernet: disconnect %d "), socket);
+	        return; // Trick: So that we do not continue in this loop with client that is NULL
+	      }
         
-	int available=clients[socket].available();
-	if (available > 0) {
-	  if (Diag::ETHERNET)  DIAG(F("Ethernet: available socket=%d,avail=%d"), socket, available);
-	  // read bytes from a client
-	  int count = clients[socket].read(buffer, MAX_ETH_BUFFER);
-	  buffer[count] = '\0'; // terminate the string properly
-	  if (Diag::ETHERNET) DIAG(F(",count=%d:%e"), socket,buffer);
-	  // execute with data going directly back
-	  CommandDistributor::parse(socket,buffer,outboundRing);
-	  return; // limit the amount of processing that takes place within 1 loop() cycle.
-	}
+      	int available=clients[socket].available();
+      	if (available > 0) {
+	        if (Diag::ETHERNET)  DIAG(F("Ethernet: available socket=%d,avail=%d"), socket, available);
+	        // read bytes from a client
+	        int count = clients[socket].read(buffer, MAX_ETH_BUFFER);
+	        buffer[count] = '\0'; // terminate the string properly
+	        if (Diag::ETHERNET) DIAG(F(",count=%d:%e"), socket,buffer);
+	        // execute with data going directly back
+	        CommandDistributor::parse(socket,buffer,outboundRing);
+	        return; // limit the amount of processing that takes place within 1 loop() cycle.
+	      }
       }
     }
 
-    mdns.run();
 
     WiThrottle::loop(outboundRing);
     
