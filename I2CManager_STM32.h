@@ -39,7 +39,8 @@
 #if defined(I2C_USE_INTERRUPTS) && defined(ARDUINO_ARCH_STM32)
 #if defined(ARDUINO_NUCLEO_F401RE) || defined(ARDUINO_NUCLEO_F411RE) || defined(ARDUINO_NUCLEO_F446RE) \
     || defined(ARDUINO_NUCLEO_F412ZG) || defined(ARDUINO_NUCLEO_F413ZH) \
-    || defined(ARDUINO_NUCLEO_F429ZI) || defined(ARDUINO_NUCLEO_F446ZE)
+    || defined(ARDUINO_NUCLEO_F429ZI) || defined(ARDUINO_NUCLEO_F446ZE) \
+    || defined(ARDUINO_NUCLEO_F4X9ZI)
 // Assume I2C1 for now - default I2C bus on Nucleo-F411RE and likely all Nucleo-64
 // and Nucleo-144 variants
 I2C_TypeDef *s = I2C1;
@@ -111,8 +112,23 @@ void I2CManagerClass::I2C_setClock(uint32_t i2cClockSpeed) {
   // Use 10x the rise time spec to enable integer divide of 50ns clock period
   uint16_t t_rise;
 
-  while (s->CR1 & I2C_CR1_STOP);  // Prevents lockup by guarding further
-                                  // writes to CR1 while STOP is being executed!
+  // TODO: PMA debugging issues with lockup
+  // We used to wait...
+  // while (s->CR1 & I2C_CR1_STOP);  // Prevents lockup by guarding further
+  // writes to CR1 while STOP is being executed!
+  // Should never happen, but wait for up to 500us only.
+  unsigned long startTime = micros();
+  bool timeout = false;
+  while ((s->CR1 & I2C_CR1_STOP) != 0)
+  {
+    if ((int32_t)(micros() - startTime) >= 500) {
+      timeout = true;
+      s->CR1 &= ~I2C_CR1_STOP; 
+      break;
+    }
+  }
+  if (timeout)
+    DIAG(F("STM32 I2C STOP timeout in I2C_setClock"));
 
   // Disable the I2C device, as TRISE can only be programmed whilst disabled
   s->CR1 &= ~(I2C_CR1_PE);  // Disable I2C
@@ -265,7 +281,22 @@ void I2CManagerClass::I2C_sendStart() {
 
   // Check there's no STOP still in progress.  If we OR the START bit into CR1
   // and the STOP bit is already set, we could output multiple STOP conditions.
-  while (s->CR1 & I2C_CR1_STOP) {}  // Wait for STOP bit to reset
+  // TODO: PMA debug... we were waiting for the STOP bit... now we just flip it
+  // while (s->CR1 & I2C_CR1_STOP) {}  // Wait for STOP bit to reset
+  // Should never happen, but wait for up to 500us only.
+  unsigned long startTime = micros();
+  bool timeout = false;
+  while ((s->CR1 & I2C_CR1_STOP) != 0)
+  {
+    if ((int32_t)(micros() - startTime) >= 500) {
+      timeout = true;
+      break;
+    }
+  }
+  if (timeout) {
+    DIAG(F("STM32 I2C: timeout ended STOP early to send START"));
+    s->CR1 & ~I2C_CR1_STOP;   // Forceably end the stop
+  }
 
   s->CR2 |= (I2C_CR2_ITEVTEN | I2C_CR2_ITERREN);  // Enable interrupts
   s->CR2 &= ~I2C_CR2_ITBUFEN;     // Don't enable buffer interupts yet.
@@ -290,9 +321,16 @@ void I2CManagerClass::I2C_close() {
   s->CR1 &= ~I2C_CR1_PE;  // Disable I2C peripheral
   // Should never happen, but wait for up to 500us only.
   unsigned long startTime = micros();
-  while ((s->CR1 & I2C_CR1_PE) != 0) {
-    if ((int32_t)(micros() - startTime) >= 500) break;
+  bool timeout = false;
+  while ((s->CR1 & I2C_CR1_PE) != 0)
+  {
+    if ((int32_t)(micros() - startTime) >= 500) {
+      timeout = true;
+      break;
+    }
   }
+  if (timeout)
+    DIAG(F("STM32 I2C timeout in I2C_Close"));
   NVIC_DisableIRQ(I2C1_EV_IRQn);
   NVIC_DisableIRQ(I2C1_ER_IRQn);
 }
@@ -417,7 +455,11 @@ void I2CManagerClass::I2C_handleInterrupt() {
             // of ways to eliminate them, and the only thing that worked for
             // me was to loop until the BTF bit becomes reset.  Either way,
             // it's a waste of processor time.  Anyone got a solution?
-            //while (s->SR1 && I2C_SR1_BTF) {}
+            // TODO: PMA - solution on the web is to read DR again?
+            // while (s->SR1 && I2C_SR1_BTF) {
+            //   volatile uint8_t tempDR = s->DR;
+            //   DIAG(F("We looped in BTF %x"), tempDR);
+            // }
             transactionState = TS_START;
           } else {
             I2C_sendStop();
