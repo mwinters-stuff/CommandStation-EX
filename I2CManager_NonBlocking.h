@@ -1,6 +1,6 @@
 /*
  *  © 2023, Neil McKechnie
- *  © 2022-2024, Paul M Antoine
+ *  © 2022 Paul M Antoine
  *  All rights reserved.
  *
  *  This file is part of CommandStation-EX
@@ -245,8 +245,8 @@ void I2CManagerClass::checkForTimeout() {
     I2CRB *t = queueHead;
     if (state==I2C_STATE_ACTIVE && t!=0 && t==currentRequest && _timeout > 0) {
       // Check for timeout
-      uint32_t elapsed = micros() - startTime;
-      if (elapsed > _timeout) { 
+      int32_t elapsed = micros() - startTime;
+      if (elapsed > (int32_t)_timeout) { 
 #ifdef DIAG_IO
         //DIAG(F("I2CManager Timeout on %s"), t->i2cAddress.toString());
 #endif
