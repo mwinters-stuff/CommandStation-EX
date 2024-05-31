@@ -117,11 +117,11 @@ void I2CManagerClass::I2C_setClock(uint32_t i2cClockSpeed) {
   // while (s->CR1 & I2C_CR1_STOP);  // Prevents lockup by guarding further
   // writes to CR1 while STOP is being executed!
   // Should never happen, but wait for up to 500us only.
-  unsigned long startTime = micros();
+  uint32_t startTime = micros();
   bool timeout = false;
   while ((s->CR1 & I2C_CR1_STOP) != 0)
   {
-    if ((int32_t)(micros() - startTime) >= 500) {
+    if ((micros() - startTime) >= 500) {
       timeout = true;
       s->CR1 &= ~I2C_CR1_STOP; 
       break;

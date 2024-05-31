@@ -1,6 +1,6 @@
 /*
  *  © 2023, Neil McKechnie. All rights reserved.
- *  © 2022 Paul M Antoine
+ *  © 2022-2024 Paul M Antoine
  *
  *  This file is part of CommandStation-EX
  *
@@ -519,14 +519,14 @@ private:
 
     // State is set to I2C_STATE_FREE when the interrupt handler has finished
     // the current request and is ready to complete.
-    uint8_t state = I2C_STATE_FREE;
+    uint8_t volatile state = I2C_STATE_FREE;
 
     // CompletionStatus may be set by the interrupt handler at any time but is
     // not written to the I2CRB until the state is I2C_STATE_FREE.
-    uint8_t completionStatus = I2C_STATUS_OK;
-    uint8_t overallStatus = I2C_STATUS_OK;
+    uint8_t volatile completionStatus = I2C_STATUS_OK;
+    uint8_t volatile overallStatus = I2C_STATUS_OK;
 
-    I2CRB * currentRequest = NULL;
+    I2CRB * volatile currentRequest = NULL;
     uint8_t txCount = 0;
     uint8_t rxCount = 0;
     uint8_t bytesToSend = 0;
