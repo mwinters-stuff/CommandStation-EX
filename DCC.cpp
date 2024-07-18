@@ -72,13 +72,26 @@ void DCC::begin() {
 #endif
 }
 
+int16_t DCC::defaultMomentum=0;
 
 void DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
   byte speedCode = (tSpeed & 0x7F)  + tDirection * 128;
-  setThrottle2(cab, speedCode);
-  TrackManager::setDCSignal(cab,speedCode); // in case this is a dcc track on this addr
-  // retain speed for loco reminders
-  updateLocoReminder(cab, speedCode );
+  int reg=lookupSpeedTable(cab);
+  if (reg<0 || speedTable[reg].targetSpeed==speedCode) return; 
+  speedTable[reg].targetSpeed=speedCode;
+  auto momentum=speedTable[reg].millis_per_notch;
+  if (momentum<0) momentum=defaultMomentum;
+  if (momentum>0 && tSpeed!=1) { // not ESTOP
+    // we dont throttle speed, we just let the reminders take it to target
+    speedTable[reg].momentum_base=millis();
+  } 
+  else {  // Momentum not involved, throttle now.
+    speedTable[reg].speedCode = speedCode;
+    setThrottle2(cab, speedCode);
+    TrackManager::setDCSignal(cab,speedCode); // in case this is a dcc track on this addr
+    if ((speedCode & 0x7f)==1) updateLocoReminder(cab,speedCode); // ESTOP broadcast fix 
+  }
+  CommandDistributor::broadcastLoco(reg);
 }
 
 void DCC::setThrottle2( uint16_t cab, byte speedCode)  {
@@ -770,6 +783,17 @@ void DCC::issueReminders() {
     lastLocoReminder = reg;
 }
 
+int16_t normalize(byte speed) {
+   if (speed & 0x80) return speed & 0x7F;
+   return 0-1-speed; 
+}
+byte dccalize(int16_t speed) {
+   if (speed>127) return 0xFF;  // 127 forward
+   if (speed<-127) return 0x7F;  // 127 reverse
+   if (speed >=0) return speed | 0x80;
+   return 1 - speed; 
+}
+
 bool DCC::issueReminder(int reg) {
   unsigned long functions=speedTable[reg].functions;
   int loco=speedTable[reg].loco;
@@ -777,6 +801,27 @@ bool DCC::issueReminder(int reg) {
 
   switch (loopStatus) {
         case 0:
+         // calculate any momentum change going on
+         if (speedTable[reg].targetSpeed!=speedTable[reg].speedCode) {
+            // calculate new speed code 
+            auto now=millis();
+            auto delay=now-speedTable[reg].momentum_base;
+            auto millisPerNotch=speedTable[reg].millis_per_notch;
+            if (millisPerNotch<0) millisPerNotch=defaultMomentum;
+
+            auto ticks=delay/millisPerNotch;
+            if (ticks>0) {
+              auto sc=speedTable[reg].speedCode;
+             // DIAG(F("Momentum loco= %d ticks=%d sc=%d"),loco,ticks,sc);
+              auto current=normalize(sc);  // -128..+127
+              auto target=normalize(speedTable[reg].targetSpeed);
+              sc=dccalize(current + ((current<target)?ticks:-ticks));
+             // DIAG(F("c=%d t=%d newsc=%d"),current,target,sc);
+              speedTable[reg].speedCode=sc;
+              TrackManager::setDCSignal(loco,sc); // in case this is a dcc track on this addr
+              speedTable[reg].momentum_base=now;  
+            }
+         }
       //   DIAG(F("Reminder %d speed %d"),loco,speedTable[reg].speedCode);
          setThrottle2(loco, speedTable[reg].speedCode);
          break;
@@ -859,13 +904,26 @@ int DCC::lookupSpeedTable(int locoId, bool autoCreate) {
   if (reg==firstEmpty){
         speedTable[reg].loco = locoId;
         speedTable[reg].speedCode=128;  // default direction forward
+        speedTable[reg].targetSpeed=128;  // default direction forward
         speedTable[reg].groupFlags=0;
         speedTable[reg].functions=0;
+        speedTable[reg].millis_per_notch=-1; // use default
   }
   if (reg > highestUsedReg) highestUsedReg = reg;
   return reg;
 }
 
+bool DCC::setMomentum(int locoId,int16_t millis_per_notch) {
+  if (locoId<0 || millis_per_notch<0) return false;
+  if (locoId==0) defaultMomentum=millis_per_notch;
+  else {
+    auto reg=lookupSpeedTable(locoId);
+    if (reg<0) return false;
+    speedTable[reg].millis_per_notch=millis_per_notch;
+  }
+  return true; 
+}
+ 
 void  DCC::updateLocoReminder(int loco, byte speedCode) {
 
   if (loco==0) {
@@ -875,17 +933,10 @@ void  DCC::updateLocoReminder(int loco, byte speedCode) {
        byte newspeed=(speedTable[reg].speedCode & 0x80) |  (speedCode & 0x7f);
        if (speedTable[reg].speedCode != newspeed) {
          speedTable[reg].speedCode = newspeed;
+         speedTable[reg].targetSpeed = newspeed;
          CommandDistributor::broadcastLoco(reg);
        }
      }
-     return;
-  }
-
-  // determine speed reg for this loco
-  int reg=lookupSpeedTable(loco);
-  if (reg>=0 && speedTable[reg].speedCode!=speedCode) {
-    speedTable[reg].speedCode = speedCode;
-    CommandDistributor::broadcastLoco(reg);
   }
 }
 
@@ -900,8 +951,10 @@ void DCC::displayCabList(Print * stream) {
     for (int reg = 0; reg <= highestUsedReg; reg++) {
        if (speedTable[reg].loco>0) {
         used ++;
-        StringFormatter::send(stream,F("cab=%d, speed=%d, dir=%c \n"),
-           speedTable[reg].loco,  speedTable[reg].speedCode & 0x7f,(speedTable[reg].speedCode & 0x80) ? 'F':'R');
+        StringFormatter::send(stream,F("cab=%d, speed=%d, dir=%c momentum=%d\n"),
+           speedTable[reg].loco,  speedTable[reg].speedCode & 0x7f,
+           (speedTable[reg].speedCode & 0x80) ? 'F':'R',
+           speedTable[reg].millis_per_notch);
        }
      }
      StringFormatter::send(stream,F("Used=%d, max=%d\n"),used,MAX_LOCOS);

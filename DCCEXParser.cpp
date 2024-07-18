@@ -431,6 +431,11 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
       DCC::writeCVBitMain(p[0], p[1], p[2], p[3]);
       return;
 #endif
+    
+    case 'm': // <m cabid momentum>
+      if (params!=2) break;
+      if (DCC::setMomentum(p[0],p[1])) return; 
+      break; 
 
     case 'M': // WRITE TRANSPARENT DCC PACKET MAIN <M REG X1 ... X9>
 #ifndef DISABLE_PROG
