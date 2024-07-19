@@ -914,13 +914,17 @@ int DCC::lookupSpeedTable(int locoId, bool autoCreate) {
 }
 
 bool DCC::setMomentum(int locoId,int16_t millis_per_notch) {
-  if (locoId<0 || millis_per_notch<0) return false;
-  if (locoId==0) defaultMomentum=millis_per_notch;
-  else {
-    auto reg=lookupSpeedTable(locoId);
-    if (reg<0) return false;
-    speedTable[reg].millis_per_notch=millis_per_notch;
+  if (locoId==0 && millis_per_notch>=0) {
+    defaultMomentum=millis_per_notch;
+    return true;
   }
+  // millis=-1 is ok and means this loco should use the default.
+  // We dont copy the default here because it can be changed 
+  // while running and have immediate effect on all locos using -1.
+  if (locoId<=0 || millis_per_notch<-1) return false;
+  auto reg=lookupSpeedTable(locoId);
+  if (reg<0) return false; // table full
+  speedTable[reg].millis_per_notch=millis_per_notch;
   return true; 
 }
  

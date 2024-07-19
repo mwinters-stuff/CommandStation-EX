@@ -68,7 +68,8 @@ Once a new OPCODE is decided upon, update this list.
   K, Reserved for future use - Potentially Railcom
   l, Loco speedbyte/function map broadcast
   L, Reserved for LCC interface (implemented in EXRAIL)
-  m, message to throttles broadcast 
+  m, message to throttles (broadcast output) 
+  m, set momentum  
   M, Write DCC packet
   n, Reserved for SensorCam
   N, Reserved for Sensorcam 
