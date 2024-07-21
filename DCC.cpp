@@ -795,7 +795,8 @@ byte dccalize(int16_t speed) {
    if (speed>127) return 0xFF;  // 127 forward
    if (speed<-127) return 0x7F;  // 127 reverse
    if (speed >=0) return speed | 0x80;
-   return 1 - speed; 
+   // negative speeds... -1==dcc 0, -2==dcc 1 
+   return (int16_t)-1 - speed; 
 }
 
 bool DCC::issueReminder(int reg) {
@@ -804,31 +805,40 @@ bool DCC::issueReminder(int reg) {
   byte flags=speedTable[reg].groupFlags;
 
   switch (loopStatus) {
-        case 0:
+        case 0: {
          // calculate any momentum change going on
+         auto sc=speedTable[reg].speedCode;
          if (speedTable[reg].targetSpeed!=speedTable[reg].speedCode) {
             // calculate new speed code 
             auto now=millis();
-            auto delay=now-speedTable[reg].momentum_base;
+            int16_t delay=now-speedTable[reg].momentum_base;
             auto millisPerNotch=speedTable[reg].millis_per_notch;
             if (millisPerNotch<0) millisPerNotch=defaultMomentum;
-
-            auto ticks=delay/millisPerNotch;
+            // allow for momentum change to 0 while accelerating/slowing
+            auto ticks=(millisPerNotch>0)?(delay/millisPerNotch):500;
             if (ticks>0) {
-              auto sc=speedTable[reg].speedCode;
-             // DIAG(F("Momentum loco= %d ticks=%d sc=%d"),loco,ticks,sc);
               auto current=normalize(sc);  // -128..+127
               auto target=normalize(speedTable[reg].targetSpeed);
-              sc=dccalize(current + ((current<target)?ticks:-ticks));
-             // DIAG(F("c=%d t=%d newsc=%d"),current,target,sc);
+              // DIAG(F("Momentum l=%d t=%d sc=%d c=%d t=%d"),loco,ticks,sc,current,target);
+              if (current<target) { // accelerate
+                current+=ticks;
+                if (current>target) current=target;
+              }
+              else  { // slow
+                current-=ticks;
+                if (current<target) current=target;
+              }
+              sc=dccalize(current);
+              // DIAG(F("c=%d t=%d newsc=%d"),current,target,sc);
               speedTable[reg].speedCode=sc;
               TrackManager::setDCSignal(loco,sc); // in case this is a dcc track on this addr
               speedTable[reg].momentum_base=now;  
             }
-         }
-      //   DIAG(F("Reminder %d speed %d"),loco,speedTable[reg].speedCode);
-         setThrottle2(loco, speedTable[reg].speedCode);
-         break;
+          }
+        // DIAG(F("Reminder %d speed %d"),loco,speedTable[reg].speedCode);
+          setThrottle2(loco, sc);
+        }
+        break;
        case 1: // remind function group 1 (F0-F4)
           if (flags & FN_GROUP_1)
 #ifndef DISABLE_FUNCTION_REMINDERS
