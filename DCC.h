@@ -59,8 +59,10 @@ public:
 
   // Public DCC API functions
   static void setThrottle(uint16_t cab, uint8_t tSpeed, bool tDirection);
+  static void estopAll();
   static int8_t getThrottleSpeed(int cab);
   static uint8_t getThrottleSpeedByte(int cab);
+  static uint8_t getLocoSpeedByte(int cab); // may lag throttle 
   static uint8_t getThrottleFrequency(int cab);
   static bool getThrottleDirection(int cab);
   static void writeCVByteMain(int cab, int cv, byte bValue);
@@ -117,7 +119,6 @@ private:
   static byte loopStatus;
   static int16_t defaultMomentum;  // Millis per speed step
   static void setThrottle2(uint16_t cab, uint8_t speedCode);
-  static void updateLocoReminder(int loco, byte speedCode);
   static void setFunctionInternal(int cab, byte fByte, byte eByte, byte count);
   static bool issueReminder(int reg);
   static int lastLocoReminder;

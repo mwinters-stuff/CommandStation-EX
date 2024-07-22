@@ -75,6 +75,10 @@ void DCC::begin() {
 int16_t DCC::defaultMomentum=0;
 
 void DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
+  if (cab==0) {
+    if (tSpeed==1) estopAll(); // ESTOP broadcast fix 
+    return;
+  } 
   byte speedCode = (tSpeed & 0x7F)  + tDirection * 128;
   int reg=lookupSpeedTable(cab);
   if (reg<0 || speedTable[reg].targetSpeed==speedCode) return; 
@@ -89,7 +93,6 @@ void DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
     speedTable[reg].speedCode = speedCode;
     setThrottle2(cab, speedCode);
     TrackManager::setDCSignal(cab,speedCode); // in case this is a dcc track on this addr
-    if ((speedCode & 0x7f)==1) updateLocoReminder(cab,speedCode); // ESTOP broadcast fix 
   }
   CommandDistributor::broadcastLoco(reg);
 }
@@ -152,14 +155,22 @@ void DCC::setFunctionInternal(int cab, byte byte1, byte byte2, byte count) {
 // returns speed steps 0 to 127 (1 == emergency stop)
 // or -1 on "loco not found"
 int8_t DCC::getThrottleSpeed(int cab) {
-  int reg=lookupSpeedTable(cab);
-  if (reg<0) return -1;
-  return speedTable[reg].speedCode & 0x7F;
+  return getThrottleSpeedByte(cab) & 0x7F;
 }
 
 // returns speed code byte
 // or 128 (speed 0, dir forward) on "loco not found".
+// This is the throttle set speed
 uint8_t DCC::getThrottleSpeedByte(int cab) {
+  int reg=lookupSpeedTable(cab);
+  if (reg<0)
+    return 128;
+  return speedTable[reg].targetSpeed;
+}
+// returns speed code byte for loco. 
+// This is the most recently send DCC speed packet byte
+// or 128 (speed 0, dir forward) on "loco not found".
+uint8_t DCC::getLocoSpeedByte(int cab) {
   int reg=lookupSpeedTable(cab);
   if (reg<0)
     return 128;
@@ -185,9 +196,7 @@ uint8_t DCC::getThrottleFrequency(int cab) {
 // returns direction on loco
 // or true/forward on "loco not found"
 bool DCC::getThrottleDirection(int cab) {
-  int reg=lookupSpeedTable(cab);
-  if (reg<0) return true;
-  return (speedTable[reg].speedCode & 0x80) !=0;
+  return getThrottleSpeedByte(cab) % 0x80;
 }
 
 // Set function to value on or off
@@ -754,7 +763,6 @@ void DCC::forgetLoco(int cab) {  // removes any speed reminders for this loco
   int reg=lookupSpeedTable(cab, false);
   if (reg>=0) {
     speedTable[reg].loco=0;
-    setThrottle2(cab,1); // ESTOP if this loco still on track
     CommandDistributor::broadcastForgetLoco(cab);
   }
 }
@@ -808,7 +816,7 @@ bool DCC::issueReminder(int reg) {
         case 0: {
          // calculate any momentum change going on
          auto sc=speedTable[reg].speedCode;
-         if (speedTable[reg].targetSpeed!=speedTable[reg].speedCode) {
+         if (speedTable[reg].targetSpeed!=sc) {
             // calculate new speed code 
             auto now=millis();
             int16_t delay=now-speedTable[reg].momentum_base;
@@ -942,21 +950,20 @@ bool DCC::setMomentum(int locoId,int16_t millis_per_notch) {
   return true; 
 }
  
-void  DCC::updateLocoReminder(int loco, byte speedCode) {
-
-  if (loco==0) {
-     // broadcast stop/estop but dont change direction
-     for (int reg = 0; reg <= highestUsedReg; reg++) {
-       if (speedTable[reg].loco==0) continue;
-       byte newspeed=(speedTable[reg].speedCode & 0x80) |  (speedCode & 0x7f);
-       if (speedTable[reg].speedCode != newspeed) {
-         speedTable[reg].speedCode = newspeed;
-         speedTable[reg].targetSpeed = newspeed;
-         CommandDistributor::broadcastLoco(reg);
-       }
-     }
+void  DCC::estopAll() {
+  setThrottle2(0,1); // estop all locos
+  TrackManager::setDCSignal(0,1); 
+    
+  // remind stop/estop but dont change direction
+  for (int reg = 0; reg <= highestUsedReg; reg++) {
+    if (speedTable[reg].loco==0) continue;
+    byte newspeed=(speedTable[reg].speedCode & 0x80) |  0x01;
+    speedTable[reg].speedCode = newspeed;
+    speedTable[reg].targetSpeed = newspeed;
+    CommandDistributor::broadcastLoco(reg);  
   }
 }
+
 
 DCC::LOCO DCC::speedTable[MAX_LOCOS];
 int DCC::lastLocoReminder = 0;

@@ -586,7 +586,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	}
 
     case '!': // ESTOP ALL  <!>
-        DCC::setThrottle(0,1,1); // this broadcasts speed 1(estop) and sets all reminders to speed 1.
+        DCC::estopAll(); // this broadcasts speed 1(estop) and sets all reminders to speed 1.
         return;
 
 #ifdef HAS_ENOUGH_MEMORY
