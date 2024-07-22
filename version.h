@@ -3,7 +3,8 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.3.12"
+#define VERSION "5.3.13"
+// 5.3.13 - Bugfix: refactored the Ethernet client handling code to use an inUse boolean for each client - now works!
 // 5.2.60 - Bugfix: Opcode AFTEROVERLOAD does not have an argument that is a pin and needs to be initialized
 //        - Remove inrush throttle after half good time so that we go to mode overload if problem persists
 // 5.3.11
