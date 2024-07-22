@@ -110,7 +110,7 @@ public:
     byte targetSpeed;           // speed set by throttle
   };
  static LOCO speedTable[MAX_LOCOS];
- static int lookupSpeedTable(int locoId, bool autoCreate=true);
+ static LOCO * lookupSpeedTable(int locoId, bool autoCreate=true);
  static byte cv1(byte opcode, int cv);
  static byte cv2(int cv);
  static bool setMomentum(int locoId,int16_t millis_per_notch);
@@ -120,9 +120,8 @@ private:
   static int16_t defaultMomentum;  // Millis per speed step
   static void setThrottle2(uint16_t cab, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte fByte, byte eByte, byte count);
-  static bool issueReminder(int reg);
-  static int lastLocoReminder;
-  static int highestUsedReg;
+  static bool issueReminder(LOCO * slot);
+  static LOCO* nextLocoReminder;
   static FSH *shieldName;
   static byte globalSpeedsteps;
 
