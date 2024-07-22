@@ -215,16 +215,23 @@ bool EthernetInterface::checkLink() {
       // gets disconnected and connected again
       if(!outboundRing)
       	outboundRing=new RingStream(OUTBOUND_RING_SIZE);
+      // Clear out the clients
+      for (byte socket = 0; socket < MAX_SOCK_NUM; socket++) {
+        clients[socket].inUse = false;
+      }
     }
     return true;
   } else { // LinkOFF
     if (connected) {  // Were connected, but no longer without a LINK!
       DIAG(F("Ethernet cable disconnected"));
       connected=false;
-      //clean up any client
+      //clean up any clients
       for (byte socket = 0; socket < MAX_SOCK_NUM; socket++) {
-        if(clients[socket].connected())
-          clients[socket].stop();
+        if (clients[socket].inUse && clients[socket].client.connected())
+        {
+          clients[socket].client.flush();
+          clients[socket].client.stop();
+        }
       }
       mdns.removeServiceRecord(IP_PORT, MDNSServiceTCP);
       // tear down server
@@ -251,57 +258,68 @@ void EthernetInterface::loop2() {
     // check for new client
     if (client)
     {
-        byte socket;
-	bool sockfound = false;
-        for (socket = 0; socket < MAX_SOCK_NUM; socket++) {
-          if (clients[socket] && (clients[socket] == client)) {
-	    sockfound = true;
-	    if (Diag::ETHERNET) DIAG(F("Ethernet: Old client socket %d"),socket);
-	    break;
-          }
-	}
-	if (!sockfound) { // new client
-	  for (socket = 0; socket < MAX_SOCK_NUM; socket++) {
-	    if (!clients[socket]) {
-	      // On accept() the EthernetServer doesn't track the client anymore
-	      // so we store it in our client array
-	      clients[socket] = client;
-	      if (Diag::ETHERNET) DIAG(F("Ethernet: New client socket %d"),socket);
-	      break;
-            }
-	  }
+      byte socket;
+      bool sockfound = false;
+      for (socket = 0; socket < MAX_SOCK_NUM; socket++)
+      {
+        if (clients[socket].inUse && (client == clients[socket].client))
+        {
+          sockfound = true;
+          if (Diag::ETHERNET)
+            DIAG(F("Ethernet: Old client socket %d"), socket);
+          break;
         }
-        if (socket==MAX_SOCK_NUM) DIAG(F("new Ethernet OVERFLOW")); 
+      }
+      if (!sockfound)
+      { // new client
+        for (socket = 0; socket < MAX_SOCK_NUM; socket++)
+        {
+          if (!clients[socket].inUse)
+          {
+            // On accept() the EthernetServer doesn't track the client anymore
+            // so we store it in our client array
+            clients[socket].client = client;
+            clients[socket].inUse = true;
+            if (Diag::ETHERNET)
+              DIAG(F("Ethernet: New client socket %d"), socket);
+            break;
+          }
+        }
+      }
+      if (socket == MAX_SOCK_NUM)
+        DIAG(F("new Ethernet OVERFLOW"));
     }
 
     // check for incoming data from all possible clients
     for (byte socket = 0; socket < MAX_SOCK_NUM; socket++)
     {
-      if (clients[socket]) {
-	if (!clients[socket].connected()) { // stop any clients which disconnect
-	  CommandDistributor::forget(socket);
-	  clients[socket].stop();
-  #if defined(ARDUINO_ARCH_AVR)
-	  clients[socket]=NULL;
-  #else
-	  clients[socket]=(EthernetClient)nullptr;
-  #endif
-	  //if (Diag::ETHERNET)
-	  DIAG(F("Ethernet: disconnect %d "), socket);
-	  return; // Trick: So that we do not continue in this loop with client that is NULL
-	}
-        
-	int available=clients[socket].available();
-	if (available > 0) {
-	  if (Diag::ETHERNET)  DIAG(F("Ethernet: available socket=%d,avail=%d"), socket, available);
-	  // read bytes from a client
-	  int count = clients[socket].read(buffer, MAX_ETH_BUFFER);
-	  buffer[count] = '\0'; // terminate the string properly
-	  if (Diag::ETHERNET) DIAG(F(",count=%d:%e"), socket,buffer);
-	  // execute with data going directly back
-	  CommandDistributor::parse(socket,buffer,outboundRing);
-	  return; // limit the amount of processing that takes place within 1 loop() cycle.
-	}
+      if (clients[socket].inUse)
+      {
+        if (!clients[socket].client.connected())
+        { // stop any clients which disconnect
+          CommandDistributor::forget(socket);
+          clients[socket].client.flush();
+          clients[socket].client.stop();
+          clients[socket].inUse = false;
+          if (Diag::ETHERNET)
+            DIAG(F("Ethernet: disconnect %d "), socket);
+          return; // Trick: So that we do not continue in this loop with client that is NULL
+        }
+
+        int available = clients[socket].client.available();
+        if (available > 0)
+        {
+          if (Diag::ETHERNET)
+            DIAG(F("Ethernet: available socket=%d,avail=%d"), socket, available);
+          // read bytes from a client
+          int count = clients[socket].client.read(buffer, MAX_ETH_BUFFER);
+          buffer[count] = '\0'; // terminate the string properly
+          if (Diag::ETHERNET)
+            DIAG(F(",count=%d:%e"), socket, buffer);
+          // execute with data going directly back
+          CommandDistributor::parse(socket, buffer, outboundRing);
+          return; // limit the amount of processing that takes place within 1 loop() cycle.
+        }
       }
     }
 
@@ -315,9 +333,10 @@ void EthernetInterface::loop2() {
       DIAG(F("Ethernet outboundRing socket=%d error"), socketOut);
     } else if (socketOut >= 0) {
       int count=outboundRing->count();
-      if (Diag::ETHERNET) DIAG(F("Ethernet reply socket=%d, count=:%d"), socketOut,count);
-      for(;count>0;count--)  clients[socketOut].write(outboundRing->read());
-      clients[socketOut].flush(); //maybe 
+      if (Diag::ETHERNET)
+        DIAG(F("Ethernet reply socket=%d, count=:%d"), socketOut,count);
+      for(;count>0;count--)  clients[socketOut].client.write(outboundRing->read());
+      clients[socketOut].client.flush(); //maybe 
     }
 }
 #endif
