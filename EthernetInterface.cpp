@@ -211,6 +211,8 @@ bool EthernetInterface::checkLink() {
       }
       mdns.begin(Ethernet.localIP(), WIFI_HOSTNAME); // hostname
       mdns.addServiceRecord(WIFI_HOSTNAME "._withrottle", IP_PORT, MDNSServiceTCP);
+      // Not sure if we need to run it once, but just in case!
+      mdns.run();
       // only create a outboundRing it none exists, this may happen if the cable
       // gets disconnected and connected again
       if(!outboundRing)
@@ -244,10 +246,14 @@ bool EthernetInterface::checkLink() {
 }
 
 void EthernetInterface::loop2() {
-    if (!outboundRing) { // no idea to call loop2() if we can't handle outgoing data in it
-      if (Diag::ETHERNET) DIAG(F("No outboundRing"));
-      return;
-    }
+  if (!outboundRing) { // no idea to call loop2() if we can't handle outgoing data in it
+    if (Diag::ETHERNET) DIAG(F("No outboundRing"));
+    return;
+  }
+
+  // Always do this because we don't want traffic to intefere with being found!
+  mdns.run();
+
     // get client from the server
   #if defined (STM32_ETHERNET)
     // STM32Ethernet doesn't use accept(), just available()
@@ -322,8 +328,6 @@ void EthernetInterface::loop2() {
         }
       }
     }
-
-    mdns.run();
 
     WiThrottle::loop(outboundRing);
     

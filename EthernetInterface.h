@@ -43,7 +43,7 @@
  #include <lwip/netif.h>
  extern "C" struct netif gnetif;
  #define STM32_ETHERNET
- #define MAX_SOCK_NUM 10
+ #define MAX_SOCK_NUM 8
 #else
  #include "Ethernet.h"
 //  #define MAX_SOCK_NUM 4
@@ -57,7 +57,6 @@
 
 #define MAX_ETH_BUFFER 512
 #define OUTBOUND_RING_SIZE 2048
-
 class EthernetInterface {
 
  public:
@@ -76,7 +75,7 @@ class EthernetInterface {
     struct {
         EthernetClient client;
         bool inUse;
-    } clients[MAX_CLIENT];
+    } clients[MAX_SOCK_NUM];
     // accept up to MAX_SOCK_NUM client connections at the same time; This depends on the chipset used on the Shield
 
     uint8_t buffer[MAX_ETH_BUFFER+1];                    // buffer used by TCP for the recv
