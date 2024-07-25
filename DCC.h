@@ -109,7 +109,7 @@ public:
     byte momentumA, momentumD;
     byte targetSpeed;           // speed set by throttle
   };
- static const int16_t MOMENTUM_FACTOR=8;  
+ static const int16_t MOMENTUM_FACTOR=7;  
  static const byte MOMENTUM_USE_DEFAULT=255;  
  static byte getMomentum(LOCO * slot);
  
