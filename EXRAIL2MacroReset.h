@@ -266,7 +266,7 @@
 #define LCC(eventid) 
 #define LCCX(senderid,eventid) 
 #define LCD(row,msg)
-#define MOMENTUM(mspertick)
+#define MOMENTUM(accel,decel...)
 #define SCREEN(display,row,msg)
 #define LCN(msg) 
 #define MESSAGE(msg)

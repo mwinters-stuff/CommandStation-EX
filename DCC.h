@@ -106,18 +106,23 @@ public:
     uint32_t functions;
     // Momentum management variables
     uint32_t momentum_base;     // millis() when speed modified under momentum
-    int16_t  millis_per_notch;  // 0=no momentum, -1=defaultMomentum
+    byte momentumA, momentumD;
     byte targetSpeed;           // speed set by throttle
   };
+ static const int16_t MOMENTUM_FACTOR=8;  
+ static const byte MOMENTUM_USE_DEFAULT=255;  
+ static byte getMomentum(LOCO * slot);
+ 
  static LOCO speedTable[MAX_LOCOS];
  static LOCO * lookupSpeedTable(int locoId, bool autoCreate=true);
  static byte cv1(byte opcode, int cv);
  static byte cv2(int cv);
- static bool setMomentum(int locoId,int16_t millis_per_notch);
+ static bool setMomentum(int locoId,int16_t accelerating, int16_t decelerating);
  
 private:
   static byte loopStatus;
-  static int16_t defaultMomentum;  // Millis per speed step
+  static byte defaultMomentumA;  // Accelerating
+  static byte defaultMomentumD;  // Accelerating
   static void setThrottle2(uint16_t cab, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte fByte, byte eByte, byte count);
   static bool issueReminder(LOCO * slot);

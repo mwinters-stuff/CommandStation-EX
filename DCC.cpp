@@ -74,20 +74,28 @@ void DCC::begin() {
 #endif
 }
 
-int16_t DCC::defaultMomentum=0;
+byte DCC::defaultMomentumA=0;
+byte DCC::defaultMomentumD=0;
+
+byte DCC::getMomentum(LOCO * slot) {
+   if ((slot->targetSpeed & 0x7f) > (slot->speedCode & 0x7f)) // accelerate
+      return slot->momentumA==MOMENTUM_USE_DEFAULT ? defaultMomentumA : slot->momentumA;
+   return slot->momentumD==MOMENTUM_USE_DEFAULT ? defaultMomentumD : slot->momentumD;
+}
 
 void DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
-  if (cab==0) {
-    if (tSpeed==1) estopAll(); // ESTOP broadcast fix 
-    return;
+  if (tSpeed==1) {
+    if (cab==0) {
+      estopAll(); // ESTOP broadcast fix 
+      return;
+    }
   } 
   byte speedCode = (tSpeed & 0x7F)  + tDirection * 128;
   LOCO * slot=lookupSpeedTable(cab);
   if (slot->targetSpeed==speedCode) return; 
   slot->targetSpeed=speedCode;
-  auto momentum=slot->millis_per_notch;
-  if (momentum<0) momentum=defaultMomentum;
-  if (momentum>0 && tSpeed!=1) { // not ESTOP
+  byte momentum=getMomentum(slot);;
+  if (momentum && tSpeed!=1) { // not ESTOP
     // we dont throttle speed, we just let the reminders take it to target
     slot->momentum_base=millis();
   } 
@@ -813,8 +821,7 @@ bool DCC::issueReminder(LOCO * slot) {
             // calculate new speed code 
             auto now=millis();
             int16_t delay=now-slot->momentum_base;
-            auto millisPerNotch=slot->millis_per_notch;
-            if (millisPerNotch<0) millisPerNotch=defaultMomentum;
+            auto millisPerNotch=MOMENTUM_FACTOR * (int16_t)getMomentum(slot);
             // allow for momentum change to 0 while accelerating/slowing
             auto ticks=(millisPerNotch>0)?(delay/millisPerNotch):500;
             if (ticks>0) {
@@ -920,20 +927,29 @@ DCC::LOCO *  DCC::lookupSpeedTable(int locoId, bool autoCreate) {
   firstEmpty->targetSpeed=128;  // default direction forward
   firstEmpty->groupFlags=0;
   firstEmpty->functions=0;
-  firstEmpty->millis_per_notch=-1; // use default
+  firstEmpty->momentumA=MOMENTUM_USE_DEFAULT; 
+  firstEmpty->momentumD=MOMENTUM_USE_DEFAULT; 
   return firstEmpty;
 }
 
-bool DCC::setMomentum(int locoId,int16_t millis_per_notch) {
-  if (locoId==0 && millis_per_notch>=0) {
-    defaultMomentum=millis_per_notch;
+bool DCC::setMomentum(int locoId,int16_t accelerating, int16_t decelerating) {
+  if (locoId<=0  ) return false;
+  if (locoId==0) {
+    if (accelerating<0 || decelerating<0) return false;
+    defaultMomentumA=accelerating/MOMENTUM_FACTOR;
+    defaultMomentumD=decelerating/MOMENTUM_FACTOR;
     return true;
   }
-  // millis=-1 is ok and means this loco should use the default.
-  // We dont copy the default here because it can be changed 
-  // while running and have immediate effect on all locos using -1.
-  if (locoId<=0 || millis_per_notch<-1) return false;
-  lookupSpeedTable(locoId,true)->millis_per_notch=millis_per_notch;
+  // -1 is ok and means this loco should use the default.
+  if (accelerating<-1 || decelerating<-1) return false;
+  if (accelerating>2000 || decelerating>2000) return false;
+  
+  // Values stored are 255=MOMENTUM_USE_DEFAULT, or millis/MOMENTUM_FACTOR.
+  // This is to keep the values in a byte rather than int16
+  // thus saving 2 bytes RAM per loco slot.   
+  LOCO* slot=lookupSpeedTable(locoId,true);
+  slot->momentumA=(accelerating<0)? MOMENTUM_USE_DEFAULT: (accelerating/MOMENTUM_FACTOR);
+  slot->momentumD=(decelerating<0)? MOMENTUM_USE_DEFAULT: (decelerating/MOMENTUM_FACTOR);
   return true; 
 }
 
@@ -964,11 +980,11 @@ void DCC::displayCabList(Print * stream) {
        if (slot->loco==0) break;  // no more locos
        if (slot->loco>0) {
         used ++;
-        StringFormatter::send(stream,F("cab=%d, speed=%d, target=%d momentum=%d\n"),
+        StringFormatter::send(stream,F("cab=%d, speed=%d, target=%d momentum=%d/%d\n"),
            slot->loco,  slot->speedCode, slot->targetSpeed,
-           slot->millis_per_notch);
+           slot->momentumA, slot->momentumD);
        }
      }
-     StringFormatter::send(stream,F("Used=%d, max=%d, momentum=%d *>\n"),
-                            used,MAX_LOCOS, DCC::defaultMomentum);
+     StringFormatter::send(stream,F("Used=%d, max=%d, momentum=%d/%d *>\n"),
+                            used,MAX_LOCOS, DCC::defaultMomentumA,DCC::defaultMomentumD);
 }

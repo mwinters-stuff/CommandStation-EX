@@ -430,9 +430,10 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
       return;
 #endif
     
-    case 'm': // <m cabid momentum>
-      if (params!=2) break;
-      if (DCC::setMomentum(p[0],p[1])) return; 
+    case 'm': // <m cabid momentum [braking]>
+      if (params<2 || params>3) break;
+      if (params==2) p[2]=p[1];
+      if (DCC::setMomentum(p[0],p[1],p[2])) return; 
       break; 
 
     case 'M': // WRITE TRANSPARENT DCC PACKET MAIN <M REG X1 ... X9>

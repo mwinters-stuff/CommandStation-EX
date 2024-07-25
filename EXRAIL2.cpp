@@ -568,7 +568,7 @@ void RMFT2::loop2() {
     break;
   
   case OPCODE_MOMENTUM:
-    DCC::setMomentum(loco,operand);
+    DCC::setMomentum(loco,operand,getOperand(1));
     break;
     
   case OPCODE_FORGET:

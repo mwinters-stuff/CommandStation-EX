@@ -3,7 +3,8 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.2.71"
+#define VERSION "5.2.72"
+// 5.2.72 -  Momentum. 
 // 5.2.71 -  Broadcasts of loco forgets. 
 // 5.2.70 -  IO_RocoDriver renamed to IO_EncoderThrottle.
 //        -  and included in IODEvice.h (circular dependency removed) 
