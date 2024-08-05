@@ -86,6 +86,8 @@ LookList *  RMFT2::onClockLookup=NULL;
 LookList *  RMFT2::onRotateLookup=NULL;
 #endif
 LookList *  RMFT2::onOverloadLookup=NULL;
+LookList *  RMFT2::onBlockEnterLookup=NULL;
+LookList *  RMFT2::onBlockExitLookup=NULL;
 byte * RMFT2::routeStateArray=nullptr; 
 const FSH  * * RMFT2::routeCaptionArray=nullptr; 
 int16_t * RMFT2::stashArray=nullptr;
@@ -130,11 +132,11 @@ int16_t LookList::find(int16_t value) {
 void LookList::chain(LookList * chain) {
   m_chain=chain;
 }
-void LookList::handleEvent(const FSH* reason,int16_t id) {
+void LookList::handleEvent(const FSH* reason,int16_t id, int16_t loco) {
   // New feature... create multiple ONhandlers
   for (int i=0;i<m_size;i++) 
     if (m_lookupArray[i]==id)
-       RMFT2::startNonRecursiveTask(reason,id,m_resultArray[i]);
+       RMFT2::startNonRecursiveTask(reason,id,m_resultArray[i],loco);
 }
 
 
@@ -202,6 +204,8 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
   onRotateLookup=LookListLoader(OPCODE_ONROTATE);
 #endif
   onOverloadLookup=LookListLoader(OPCODE_ONOVERLOAD);
+  onBlockEnterLookup=LookListLoader(OPCODE_ONBLOCKENTER);
+  onBlockExitLookup=LookListLoader(OPCODE_ONBLOCKEXIT);
   // onLCCLookup is not the same so not loaded here. 
 
   // Second pass startup, define any turnouts or servos, set signals red
@@ -1281,6 +1285,12 @@ void RMFT2::activateEvent(int16_t addr, bool activate) {
   else onDeactivateLookup->handleEvent(F("DEACTIVATE"),addr);
 }
 
+void RMFT2::blockEvent(int16_t block, int16_t loco, bool entering) {
+  // Hunt for an ONBLOCKENTER/ONBLOCKEXIT for this accessory
+  if (entering)  onBlockEnterLookup->handleEvent(F("BLOCKENTER"),block,loco);
+  else onBlockExitLookup->handleEvent(F("BLOCKEXIT"),block,loco);
+}
+
 void RMFT2::changeEvent(int16_t vpin, bool change) {
   // Hunt for an ONCHANGE for this sensor
   if (change)  onChangeLookup->handleEvent(F("CHANGE"),vpin);
@@ -1331,7 +1341,7 @@ void RMFT2::killBlinkOnVpin(VPIN pin) {
   }
 }
   
-void RMFT2::startNonRecursiveTask(const FSH* reason, int16_t id,int pc) {  
+void RMFT2::startNonRecursiveTask(const FSH* reason, int16_t id,int pc, int16_t loco) {  
   // Check we dont already have a task running this handler
   RMFT2 * task=loopTask;
   while(task) {
@@ -1343,7 +1353,7 @@ void RMFT2::startNonRecursiveTask(const FSH* reason, int16_t id,int pc) {
     if (task==loopTask) break;
   }
   
-  task=new RMFT2(pc);  // new task starts at this instruction
+  task=new RMFT2(pc,loco);  // new task starts at this instruction
   task->onEventStartPosition=pc; // flag for recursion detector
 }
 

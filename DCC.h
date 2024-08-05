@@ -122,7 +122,7 @@ public:
 private:
   static byte loopStatus;
   static byte defaultMomentumA;  // Accelerating
-  static byte defaultMomentumD;  // Accelerating
+  static byte defaultMomentumD;  // Decelerating
   static void setThrottle2(uint16_t cab, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte fByte, byte eByte, byte count);
   static bool issueReminder(LOCO * slot);
