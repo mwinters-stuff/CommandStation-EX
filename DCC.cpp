@@ -942,7 +942,8 @@ bool DCC::setMomentum(int locoId,int16_t accelerating, int16_t decelerating) {
   }
   // -1 is ok and means this loco should use the default.
   if (accelerating<-1 || decelerating<-1) return false;
-  if (accelerating>2000 || decelerating>2000) return false;
+  if (accelerating/MOMENTUM_FACTOR >= MOMENTUM_USE_DEFAULT || 
+      decelerating/MOMENTUM_FACTOR >= MOMENTUM_USE_DEFAULT) return false;
   
   // Values stored are 255=MOMENTUM_USE_DEFAULT, or millis/MOMENTUM_FACTOR.
   // This is to keep the values in a byte rather than int16
