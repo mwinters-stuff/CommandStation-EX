@@ -222,6 +222,10 @@ bool exrailHalSetup() {
 #define ONBUTTON(vpin) | FEATURE_SENSOR
 #undef ONSENSOR
 #define ONSENSOR(vpin) | FEATURE_SENSOR
+#undef ONBLOCKENTER
+#define ONBLOCKENTER(blockid) | FEATURE_BLOCK
+#undef ONBLOCKEXIT
+#define ONBLOCKEXIT(blockid) | FEATURE_BLOCK
 
 const byte RMFT2::compileFeatures = 0
    #include "myAutomation.h"
@@ -556,6 +560,8 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define ONACTIVATE(addr,subaddr) OPCODE_ONACTIVATE,V(addr<<2|subaddr),
 #define ONACTIVATEL(linear) OPCODE_ONACTIVATE,V(linear+3),
 #define ONAMBER(signal_id) OPCODE_ONAMBER,V(signal_id),
+#define ONBLOCKENTER(block_id) OPCODE_ONBLOCKENTER,V(block_id),
+#define ONBLOCKEXIT(block_id) OPCODE_ONBLOCKEXIT,V(block_id),
 #define ONCLOSE(turnout_id) OPCODE_ONCLOSE,V(turnout_id),
 #define ONLCC(sender,event) OPCODE_ONLCC,V(event),\
         OPCODE_PAD,V((((uint64_t)sender)>>32)&0xFFFF),\

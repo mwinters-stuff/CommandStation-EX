@@ -161,8 +161,7 @@ class LookList {
    public:
     static void begin();
     static void loop();
-    RMFT2(int progCounter);
-    RMFT2(int route, uint16_t cab);
+    RMFT2(int progCounter, int16_t cab=0);
     ~RMFT2();
     static void readLocoCallback(int16_t cv);
     static void createNewTask(int route, uint16_t cab);
@@ -215,7 +214,6 @@ private:
     static RMFT2 * loopTask;
     static RMFT2 * pausingTask;
     void delayMe(long millisecs);
-    void driveLoco(byte speedo);
     bool skipIfBlock();
     bool readLoco();
     void loop2();
@@ -224,6 +222,8 @@ private:
     void printMessage2(const FSH * msg);
     void thrungeString(uint32_t strfar, thrunger mode, byte id=0);
     uint16_t getOperand(byte n); 
+    void pause();
+    void resume();
     
    static bool diag;
    static const  HIGHFLASH3  byte RouteCode[];
@@ -271,9 +271,8 @@ private:
     byte  taskId;
     BlinkState blinkState; // includes AT_TIMEOUT flag. 
     uint16_t loco;
-    bool forward;
     bool invert;
-    byte speedo;
+    byte pauseSpeed;
     int onEventStartPosition;
     byte stackDepth;
     int callStack[MAX_STACK_DEPTH];
