@@ -60,8 +60,10 @@ public:
   // Public DCC API functions
   static void setThrottle(uint16_t cab, uint8_t tSpeed, bool tDirection);
   static void estopAll();
+  static void estopAll();
   static int8_t getThrottleSpeed(int cab);
   static uint8_t getThrottleSpeedByte(int cab);
+  static uint8_t getLocoSpeedByte(int cab); // may lag throttle 
   static uint8_t getLocoSpeedByte(int cab); // may lag throttle 
   static uint8_t getThrottleFrequency(int cab);
   static bool getThrottleDirection(int cab);
@@ -115,6 +117,7 @@ public:
  
  static LOCO speedTable[MAX_LOCOS];
  static LOCO * lookupSpeedTable(int locoId, bool autoCreate=true);
+ static LOCO * lookupSpeedTable(int locoId, bool autoCreate=true);
  static byte cv1(byte opcode, int cv);
  static byte cv2(int cv);
  static bool setMomentum(int locoId,int16_t accelerating, int16_t decelerating);
@@ -125,6 +128,8 @@ private:
   static byte defaultMomentumD;  // Accelerating
   static void setThrottle2(uint16_t cab, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte fByte, byte eByte, byte count);
+  static bool issueReminder(LOCO * slot);
+  static LOCO* nextLocoReminder;
   static bool issueReminder(LOCO * slot);
   static LOCO* nextLocoReminder;
   static FSH *shieldName;

@@ -3,8 +3,10 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.2.72"
-// 5.2.72 -  Momentum. 
+#define VERSION "5.2.73M"
+// TBA - Momentum
+// 5.2.73 - Bugfix: STM32 further fixes to shadowPORT entries in TrackManager.cpp for PORTG and PORTH
+// 5.2.72 - Bugfix: added shadowPORT entries in TrackManager.cpp for PORTG and PORTH on STM32, fixed typo in MotorDriver.cpp
 // 5.2.71 -  Broadcasts of loco forgets. 
 // 5.2.70 -  IO_RocoDriver renamed to IO_EncoderThrottle.
 //        -  and included in IODEvice.h (circular dependency removed) 
