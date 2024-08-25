@@ -74,6 +74,7 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
      - Waveform code is responsible for altering the PWM 
        duty cycle to 0% any time between the first and last tick.
        (there will be 7 DCC timer1 ticks in which to do this.)
+       by calling ackRailcomTimer();
     
     */
   (void) brakePin; // Ignored... works on pin 9 only 
@@ -99,13 +100,13 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
 
   // Enable Timer2 output on pin 9 (OC2B)
   DDRB |= (1 << DDB1);
-  // TODO Fudge TCNT2 to sync with last tcnt1 tick + 28uS
+  // Fudge TCNT2 to sync with last tcnt1 tick + 28uS
 
- // Previous TIMER1 Tick was at rising end-of-packet bit
- // Cutout starts half way through first preamble
- // that is 2.5 * 58uS later.
- // TCNT1 ticks 8 times / microsecond
- // auto microsendsToFirstRailcomTick=(58+58+29)-(TCNT1/8);
+  // Previous TIMER1 Tick was at rising end-of-packet bit
+  // Cutout starts half way through first preamble
+  // that is 2.5 * 58uS later.
+  // TCNT1 ticks 8 times / microsecond
+  // auto microsendsToFirstRailcomTick=(58+58+29)-(TCNT1/8);
   // set the railcom timer counter allowing for phase-correct
 
   // CHris's NOTE: 
