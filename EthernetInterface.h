@@ -46,7 +46,6 @@
  #define MAX_SOCK_NUM 8
 #else
  #include "Ethernet.h"
-//  #define MAX_SOCK_NUM 4
 #endif
 #include "RingStream.h"
 
@@ -55,8 +54,9 @@
  * 
  */
 
-#define MAX_ETH_BUFFER 512
+#define MAX_ETH_BUFFER 128
 #define OUTBOUND_RING_SIZE 2048
+
 class EthernetInterface {
 
  public:
@@ -65,21 +65,15 @@ class EthernetInterface {
      static void loop();
    
  private:
-    static EthernetInterface * singleton;
-    bool connected;
-    EthernetInterface();
-    ~EthernetInterface();
-    void loop2();
-    bool checkLink();
-    EthernetServer * server = NULL;
-    struct {
-        EthernetClient client;
-        bool inUse;
-    } clients[MAX_SOCK_NUM];
-    // accept up to MAX_SOCK_NUM client connections at the same time; This depends on the chipset used on the Shield
-
-    uint8_t buffer[MAX_ETH_BUFFER+1];                    // buffer used by TCP for the recv
-    RingStream * outboundRing = NULL;
+    static bool connected;
+    static EthernetServer * server;
+    static EthernetClient clients[MAX_SOCK_NUM];                // accept up to MAX_SOCK_NUM client connections at the same time; This depends on the chipset used on the Shield
+    static bool inUse[MAX_SOCK_NUM];                // accept up to MAX_SOCK_NUM client connections at the same time; This depends on the chipset used on the Shield
+    static uint8_t buffer[MAX_ETH_BUFFER+1];                    // buffer used by TCP for the recv
+    static RingStream * outboundRing;
+    static void acceptClient();
+    static void dropClient(byte socketnum);
+    
 };
 
 #endif
