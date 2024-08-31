@@ -338,13 +338,17 @@ bool TrackManager::setTrackMode(byte trackToSet, TRACK_MODE mode, int16_t dcAddr
       // if we discover that HA mode was globally impossible
       // we must adjust the trackPWM capabilities
       DIAG(F("High Accuracy & Railcom disabled"));
+      DCCWaveform::setRailcomPossible(false);
       FOR_EACH_TRACK(t) {
 	track[t]->trackPWM=false;
 	//DIAG(F("Track %c trackPWM 0 (global override)"), t+'A');
       }
       DCCTimer::clearPWM(); // has to be AFTER trackPWM changes because if trackPWM==true this is undone for  that track
     }
-    else DIAG(F("High Accuracy Enabled"));
+    else {
+      DIAG(F("High Accuracy Enabled"));
+      DCCWaveform::setRailcomPossible(true);
+    }
 #else
     // For ESP32 we just reinitialize the DCC Waveform
     DCCWaveform::begin();

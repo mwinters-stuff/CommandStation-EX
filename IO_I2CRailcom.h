@@ -47,11 +47,11 @@
 #include "IODevice.h"
 #include "I2CManager.h"
 #include "DIAG.h"
+#include "DCCWaveform.h"
 
 // Debug and diagnostic defines, enable too many will result in slowing the driver
 #define DIAG_I2CRailcom
 #define DIAG_I2CRailcom_data
-#define DIAG_I2CRailcom_reg
 
 class I2CRailcom : public IODevice {
 private: 
@@ -62,7 +62,7 @@ private:
   const uint8_t STOP_BIT = 0x00;    // Value LCR bit 2 
   const uint8_t PARITY_ENA = 0x00;  // Value LCR bit 3
   const  uint8_t PARITY_TYPE = 0x00; // Value LCR bit 4
-  const uint32_t BAUD_RATE = 9600;
+  const uint32_t BAUD_RATE = 250000;
   const  uint8_t PRESCALER = 0x01;   // Value MCR bit 7  
   const unsigned long SC16IS752_XTAL_FREQ_RAILCOM = 16000000; // Baud rate for Railcom signal
   byte _inbuf[65];
@@ -106,8 +106,9 @@ public:
     // Read responses from device
     if (_deviceState!=DEVSTATE_NORMAL) return;
 
-    // TODO - return if in cutout or cutout very soon.  
-    
+    // return if in cutout or cutout very soon.  
+    if (!DCCWaveform::isRailcomSampleWindow()) return; 
+
     // flip channels each loop
     if (_nPins>1) _UART_CH=_UART_CH?0:1;
 

@@ -116,18 +116,20 @@ DCCWaveform::DCCWaveform( byte preambleBits, bool isMain) {
   bits_sent = 0;
 }
     
+bool DCCWaveform::railcomPossible=false;     // High accuracy only
 volatile bool DCCWaveform::railcomActive=false;     // switched on by user
+volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
 volatile bool DCCWaveform::railcomDebug=false;     // switched on by user
 
 bool DCCWaveform::setRailcom(bool on, bool debug) {
-  if (on) {
-    // TODO check possible
+  if (on && railcomPossible) {
     railcomActive=true;
     railcomDebug=debug;
   }
   else {
     railcomActive=false;
     railcomDebug=false;
+    railcomSampleWindow=false;
   } 
   return railcomActive;
 }
@@ -147,7 +149,17 @@ void DCCWaveform::interrupt2() {
     // that the reminder doesn't block a more urgent packet. 
     reminderWindowOpen=transmitRepeats==0 && remainingPreambles<4 && remainingPreambles>1;
     if (remainingPreambles==1) promotePendingPacket();
-    else if (remainingPreambles==10 && isMainTrack && railcomActive) DCCTimer::ackRailcomTimer();
+    else if (isMainTrack && railcomActive) {
+      if (remainingPreambles==10) {
+        // cutout has started so the railcom timer needs to end the cutout at next
+        // cutout timer tick. 
+        DCCTimer::ackRailcomTimer();        
+      }
+      else if (remainingPreambles==5) {
+        // cutout has ended so its now possible to poll the railcom detectors
+        railcomSampleWindow=true;
+      }
+    }
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
     else DCCTimer::updateMinimumFreeMemoryISR(22); 
@@ -172,11 +184,14 @@ void DCCWaveform::interrupt2() {
       // preamble for next packet will start...
       remainingPreambles = requiredPreambles;
       
-      // set the railcom coundown to trigger half way 
+      // Set the railcom coundown to trigger half way 
       // through the first preamble bit.
       // Note.. we are still sending the last packet bit
-      //    and we then have to allow for the packet end bit
-      if (isMainTrack && railcomActive) DCCTimer::startRailcomTimer(9);
+      //    but the timer code allows for this
+      if (isMainTrack && railcomActive) {
+        railcomSampleWindow=false; // about to cutout, stop reading railcom data. 
+        DCCTimer::startRailcomTimer(9);
+      }
       }
   }  
 }
@@ -230,7 +245,7 @@ void DCCWaveform::promotePendingPacket() {
       // Fortunately reset and idle packets are the same length
       // Note: If railcomDebug is on, then we send resets to the main
       //       track instead of idles. This means that all data will be zeros
-      //       and only the porersets will be ones, making it much
+      //       and only the presets will be ones, making it much
       //       easier to read on a logic analyser.
       memcpy( transmitPacket, (isMainTrack && (!railcomDebug)) ? idlePacket : resetPacket, sizeof(idlePacket));
       transmitLength = sizeof(idlePacket);
