@@ -57,14 +57,6 @@ class I2CRailcom : public IODevice {
 private: 
   // SC16IS752 defines
   uint8_t _UART_CH=0x00; 
-  // Communication parameters for the DFPlayer are fixed at 8 bit, No parity, 1 stopbit
-  const uint8_t WORD_LEN = 0x03;    // Value LCR bit 0,1
-  const uint8_t STOP_BIT = 0x00;    // Value LCR bit 2 
-  const uint8_t PARITY_ENA = 0x00;  // Value LCR bit 3
-  const  uint8_t PARITY_TYPE = 0x00; // Value LCR bit 4
-  const uint32_t BAUD_RATE = 250000;
-  const  uint8_t PRESCALER = 0x01;   // Value MCR bit 7  
-  const unsigned long SC16IS752_XTAL_FREQ_RAILCOM = 16000000; // Baud rate for Railcom signal
   byte _inbuf[65];
   byte _outbuf[2]; 
 public:
@@ -155,10 +147,18 @@ private:
   // DLL least significant part of divisor
   //
   // BAUD_RATE, WORD_LEN, STOP_BIT, PARITY_ENA and PARITY_TYPE have been defined and initialized
-  // 
+  //
+  // Communication parameters 8 bit, No parity, 1 stopbit
+  static const uint8_t WORD_LEN = 0x03;    // Value LCR bit 0,1
+  static const uint8_t STOP_BIT = 0x00;    // Value LCR bit 2 
+  static const uint8_t PARITY_ENA = 0x00;  // Value LCR bit 3
+  static const uint8_t PARITY_TYPE = 0x00; // Value LCR bit 4
+  static const uint32_t BAUD_RATE = 250000;
+  static const uint8_t PRESCALER = 0x01;   // Value MCR bit 7  
+  static const unsigned long SC16IS752_XTAL_FREQ_RAILCOM = 16000000; // Baud rate for Railcom signal
+  static const uint16_t _divisor = (SC16IS752_XTAL_FREQ_RAILCOM / PRESCALER) / (BAUD_RATE * 16);  
+     
   void Init_SC16IS752(){ 
-    //uint16_t _divisor = (SC16IS752_XTAL_FREQ / PRESCALER) / (BAUD_RATE * 16);
-    const uint16_t _divisor = (SC16IS752_XTAL_FREQ_RAILCOM / PRESCALER) / (BAUD_RATE * 16);  // Calculate _divisor for baudrate
     
     if (_UART_CH==0) {
       // only reset on channel 0}
@@ -168,13 +168,16 @@ private:
   
     UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
     UART_WriteRegister(REG_MCR, 0x00); // Set MCR to all 0, includes Clock divisor
-    UART_WriteRegister(REG_LCR, 0x80 | WORD_LEN | STOP_BIT | PARITY_ENA | PARITY_TYPE); // Divisor latch enabled
+    UART_WriteRegister(REG_LCR, 0x80); // Divisor latch enabled
     UART_WriteRegister(REG_DLL, _divisor);  // Write DLL
     UART_WriteRegister(REG_DLH, (uint8_t)(_divisor >> 8)); // Write DLH
-    UART_WriteRegister(REG_LCR, UART_ReadRegister(REG_LCR) & 0x7F); // Divisor latch disabled
+    UART_WriteRegister(REG_LCR,  WORD_LEN | STOP_BIT | PARITY_ENA | PARITY_TYPE); // Divisor latch disabled
+    UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
+   
     if (_deviceState==DEVSTATE_INITIALISING) {
       DIAG(F("UART %d init complete"),_UART_CH);
-    }  
+    }
+      
   }
 
   
