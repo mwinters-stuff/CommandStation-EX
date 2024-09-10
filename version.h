@@ -3,7 +3,34 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.2.59"
+#define VERSION "5.2.76"
+// 5.2.76 - Bugfix: EXRAIL: Catch CV read errors in the callback
+// 5.2.75 - Bugfix: Serial lines 4 to 6 OK
+// 5.2.74 - Bugfix: ESP32 turn on the joined prog (as main) again after a prog operation
+// 5.2.73 - Bugfix: STM32 further fixes to shadowPORT entries in TrackManager.cpp for PORTG and PORTH
+// 5.2.72 - Bugfix: added shadowPORT entries in TrackManager.cpp for PORTG and PORTH on STM32, fixed typo in MotorDriver.cpp
+// 5.2.71 -  Broadcasts of loco forgets. 
+// 5.2.70 -  IO_RocoDriver renamed to IO_EncoderThrottle.
+//        -  and included in IODEvice.h (circular dependency removed) 
+// 5.2.69 -  IO_RocoDriver. Direct drive train with rotary encoder hw.
+// 5.2.68 -  Revert function map to signed (from 5.2.66) to avoid
+//           incompatibilities with ED etc for F31 frequency flag.
+// 5.2.67 -  EXRAIL AFTER optional debounce time variable (default 500mS)
+//        -  AFTER(42) == AFTER(42,500) sets time sensor must 
+//        -  be continuously off.
+// 5.2.66 - <F cab DCFREQ 0..3>
+//        - EXRAIL SETFREQ drop loco param (breaking since 5.2.28)
+// 5.2.65 - Speedup Exrail SETFREQ 
+// 5.2.64 - Bugfix: <0 PROG> updated to undo JOIN 
+// 5.2.63 - Implement WIFI_LED for ESP32, ESPduino32 and EX-CSB1, that is turned on when STA mode connects or AP mode is up
+//        - Add BOOSTER_INPUT definitions for ESPduino32 and EX-CSB1 to config.example.h
+//        - Add WIFI_LED definitions for ESPduino32 and EX-CSB1 to config.example.h
+// 5.2.62 - Allow acks way longer than standard
+// 5.2.61 - Merg CBUS  ACON/ACOF/ONACON/ONACOF Adapter interface.
+//        - LCC Adapter interface throttled startup,
+//          (Breaking change with Adapter base code)
+// 5.2.60 - Bugfix: Opcode AFTEROVERLOAD does not have an argument that is a pin and needs to be initialized
+//        - Remove inrush throttle after half good time so that we go to mode overload if problem persists
 // 5.2.59 - STM32 bugfix correct Serial1 definition for Nucleo-F401RE
 //        - STM32 add support for ARDUINO_NUCLEO_F4X9ZI type to span F429/F439 in upcoming STM32duino release v2.8 as a result of our PR
 // 5.2.58 - EXRAIL ALIAS allows named pins

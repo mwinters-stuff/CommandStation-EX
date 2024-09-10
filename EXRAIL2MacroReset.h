@@ -99,6 +99,10 @@
 #undef LCCX 
 #undef LCN 
 #undef MOVETT
+#undef ACON
+#undef ACOF
+#undef ONACON
+#undef ONACOF
 #undef MESSAGE
 #undef ONACTIVATE
 #undef ONACTIVATEL
@@ -191,7 +195,7 @@
 #ifndef RMFT2_UNDEF_ONLY
 #define ACTIVATE(addr,subaddr)
 #define ACTIVATEL(addr)
-#define AFTER(sensor_id)
+#define AFTER(sensor_id,timer...)
 #define AFTEROVERLOAD(track_id)
 #define ALIAS(name,value...)
 #define AMBER(signal_id)
@@ -265,6 +269,10 @@
 #define LCN(msg) 
 #define MESSAGE(msg)
 #define MOVETT(id,steps,activity)
+#define ACON(eventid)
+#define ACOF(eventid)
+#define ONACON(eventid)
+#define ONACOF(eventid)
 #define ONACTIVATE(addr,subaddr)
 #define ONACTIVATEL(linear)
 #define ONAMBER(signal_id) 
@@ -326,7 +334,7 @@
 #define SET_TRACK(track,mode)
 #define SET_POWER(track,onoff)
 #define SETLOCO(loco) 
-#define SETFREQ(loco,freq)
+#define SETFREQ(freq)
 #define SIGNAL(redpin,amberpin,greenpin) 
 #define SIGNALH(redpin,amberpin,greenpin) 
 #define SPEED(speed) 

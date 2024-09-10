@@ -2,7 +2,7 @@
  *  © 2022 Paul M Antoine
  *  © 2021 Neil McKechnie
  *  © 2021 Mike S
- *  © 2021 Herb Morton
+ *  © 2021-2024 Herb Morton
  *  © 2020-2023 Harald Barth
  *  © 2020-2021 M Steve Todd
  *  © 2020-2021 Fred Decker
@@ -564,6 +564,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	    }
 #ifndef DISABLE_PROG
             else if (p[0]=="PROG"_hk) { // <0 PROG>
+          TrackManager::setJoin(false);
 	      TrackManager::progTrackBoosted=false;  // Prog track boost mode will not outlive prog track off
 	      TrackManager::setTrackPower(TRACK_MODE_PROG, POWERMODE::OFF);
             }
@@ -642,6 +643,13 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 
     case 'F': // New command to call the new Loco Function API <F cab func 1|0>
         if(params!=3) break; 
+        
+        if (p[1]=="DCFREQ"_hk) { // <F cab DCFREQ 0..3>
+          if (p[2]<0 || p[2]>3) break;
+          DCC::setDCFreq(p[0],p[2]);
+          return;    
+        }
+
         if (Diag::CMD)
             DIAG(F("Setting loco %d F%d %S"), p[0], p[1], p[2] ? F("ON") : F("OFF"));
         if (DCC::setFn(p[0], p[1], p[2] == 1)) return;
@@ -1078,15 +1086,24 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
 #ifndef DISABLE_PROG
     case "ACK"_hk: // <D ACK ON/OFF> <D ACK [LIMIT|MIN|MAX|RETRY] Value>
 	if (params >= 3) {
+            long duration;
 	    if (p[1] == "LIMIT"_hk) {
 	      DCCACK::setAckLimit(p[2]);
-	      LCD(1, F("Ack Limit=%dmA"), p[2]);  // <D ACK LIMIT 42>
+	      LCD(1, F("Ack Limit=%dmA"), p[2]);       // <D ACK LIMIT 42>
 	    } else if (p[1] == "MIN"_hk) {
-	      DCCACK::setMinAckPulseDuration(p[2]);
-	      LCD(0, F("Ack Min=%uus"), p[2]);  //   <D ACK MIN 1500>
+	      if (params == 4 && p[3] == "MS"_hk)
+		duration = p[2] * 1000L;
+	      else
+		duration = p[2];
+	      DCCACK::setMinAckPulseDuration(duration);
+	      LCD(0, F("Ack Min=%lus"), duration);     // <D ACK MIN 1500>
 	    } else if (p[1] == "MAX"_hk) {
-	      DCCACK::setMaxAckPulseDuration(p[2]);
-	      LCD(0, F("Ack Max=%uus"), p[2]);  //   <D ACK MAX 9000>
+	      if (params == 4 && p[3] == "MS"_hk)      // <D ACK MAX 80 MS>
+		duration = p[2] * 1000L;
+	      else
+		duration = p[2];
+	      DCCACK::setMaxAckPulseDuration(duration);
+	      LCD(0, F("Ack Max=%lus"), duration);     // <D ACK MAX 9000>
 	    } else if (p[1] == "RETRY"_hk) {
 	      if (p[2] >255) p[2]=3;
 	      LCD(0, F("Ack Retry=%d Sum=%d"), p[2], DCCACK::setAckRetry(p[2]));  //   <D ACK RETRY 2>

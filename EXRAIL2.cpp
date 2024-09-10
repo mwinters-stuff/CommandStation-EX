@@ -228,7 +228,6 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
     case OPCODE_AT:
     case OPCODE_ATTIMEOUT2:
     case OPCODE_AFTER:
-    case OPCODE_AFTEROVERLOAD:
     case OPCODE_IF:
     case OPCODE_IFNOT: {
       int16_t pin = (int16_t)operand;
@@ -479,10 +478,15 @@ bool RMFT2::skipIfBlock() {
 
 
 /* static */ void RMFT2::readLocoCallback(int16_t cv) {
+  if (cv <= 0) {
+    DIAG(F("CV read error"));
+    progtrackLocoId = -1;
+    return;
+  }
   if (cv & LONG_ADDR_MARKER) {               // maker bit indicates long addr
     progtrackLocoId = cv ^ LONG_ADDR_MARKER; // remove marker bit to get real long addr
     if (progtrackLocoId <= HIGHEST_SHORT_ADDR ) {     // out of range for long addr
-      DIAG(F("Long addr %d <= %d unsupported\n"), progtrackLocoId, HIGHEST_SHORT_ADDR);
+      DIAG(F("Long addr %d <= %d unsupported"), progtrackLocoId, HIGHEST_SHORT_ADDR);
       progtrackLocoId = -1;
     }
   } else {
@@ -629,14 +633,16 @@ void RMFT2::loop2() {
     skipIf=blinkState!=at_timeout;
     break;
     
-  case OPCODE_AFTER: // waits for sensor to hit and then remain off for 0.5 seconds. (must come after an AT operation)
+  case OPCODE_AFTER: // waits for sensor to hit and then remain off for x mS. 
+    // Note, this must come after an AT operation, which is 
+    // automatically inserted by the AFTER macro. 
     if (readSensor(operand)) {
-      // reset timer to half a second and keep waiting
+      // reset timer and keep waiting
       waitAfter=millis();
       delayMe(50);
       return;
     }
-    if (millis()-waitAfter < 500 ) return;
+    if (millis()-waitAfter < getOperand(1) ) return;
     break;
 
   case OPCODE_AFTEROVERLOAD: // waits for the power to be turned back on - either by power routine or button
@@ -717,41 +723,7 @@ void RMFT2::loop2() {
 
   case OPCODE_SETFREQ:
       // Frequency is default 0, or 1, 2,3
-      //if (loco) DCC::setFn(loco,operand,true);
-      switch (operand) {
-        case 0:  // default - all F-s off
-            if (loco) {
-                DCC::setFn(loco,29,false);
-                DCC::setFn(loco,30,false);
-                DCC::setFn(loco,31,false);
-            }
-        break;
-        case 1:
-            if (loco) {
-	      DCC::setFn(loco,29,true);
-              DCC::setFn(loco,30,false);
-              DCC::setFn(loco,31,false);
-            }
-        break;
-        case 2:
-            if (loco) {
-	      DCC::setFn(loco,29,false);
-              DCC::setFn(loco,30,true);
-              DCC::setFn(loco,31,false);
-            }
-        break;
-        case 3:
-            if (loco) {
-	      DCC::setFn(loco,29,false);
-              DCC::setFn(loco,30,false);
-              DCC::setFn(loco,31,true);
-            }
-        break;
-      default:
-	; // do nothing
-	break;
-      }
-
+      DCC::setDCFreq(loco,operand);
       break;
 
   case OPCODE_RESUME:
@@ -954,11 +926,10 @@ void RMFT2::loop2() {
       delayMe(100);
       return; // still waiting for callback
     }
-    if (progtrackLocoId<0) {
-      kill(F("No Loco Found"),progtrackLocoId);
-      return; // still waiting for callback
-    }
     
+    // At failed read will result in loco == -1
+    // which is intended so it can be checked
+    // from within EXRAIL
     loco=progtrackLocoId;
     speedo=0;
     forward=true;
@@ -1000,6 +971,14 @@ void RMFT2::loop2() {
   case OPCODE_LCC:  // short form LCC
       if ((compileFeatures & FEATURE_LCC) && LCCSerial) 
           StringFormatter::send(LCCSerial,F("<L x%h>"),(uint16_t)operand);
+       break; 
+  
+  case OPCODE_ACON:  // MERG adapter 
+  case OPCODE_ACOF: 
+      if ((compileFeatures & FEATURE_LCC) && LCCSerial) 
+          StringFormatter::send(LCCSerial,F("<L x%c%h%h>"),
+          opcode==OPCODE_ACON?'0':'1',
+          (uint16_t)operand,getOperand(progCounter,1));
        break; 
 
   case OPCODE_LCCX: // long form LCC
@@ -1089,6 +1068,8 @@ void RMFT2::loop2() {
   case OPCODE_PINTURNOUT: // Turnout definition ignored at runtime
   case OPCODE_ONCLOSE: // Turnout event catchers ignored here
   case OPCODE_ONLCC:   // LCC event catchers ignored here 
+  case OPCODE_ONACON:   // MERG event catchers ignored here 
+  case OPCODE_ONACOF:   // MERG event catchers ignored here 
   case OPCODE_ONTHROW:
   case OPCODE_ONACTIVATE: // Activate event catchers ignored here
   case OPCODE_ONDEACTIVATE:

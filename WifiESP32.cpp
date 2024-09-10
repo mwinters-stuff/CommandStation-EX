@@ -147,6 +147,12 @@ bool WifiESP::setup(const char *SSid,
   //  enableCoreWDT(1);
   //  disableCoreWDT(0);
 
+#ifdef WIFI_LED
+  // Turn off Wifi LED
+  pinMode(WIFI_LED, OUTPUT);
+  digitalWrite(WIFI_LED, 0);
+#endif
+
   // clean start
   WiFi.mode(WIFI_STA);
   WiFi.disconnect(true);
@@ -247,12 +253,19 @@ bool WifiESP::setup(const char *SSid,
     // no idea to go on
     return false;
   }
+#ifdef WIFI_LED
+  else{
+    // Turn on Wifi connected LED
+    digitalWrite(WIFI_LED, 1);
+  }
+#endif
+
 
   // Now Wifi is up, register the mDNS service
   if(!MDNS.begin(hostname)) {
     DIAG(F("Wifi setup failed to start mDNS"));
   }
-  if(!MDNS.addService("withrottle", "tcp", 2560)) {
+  if(!MDNS.addService("withrottle", "tcp", port)) {
     DIAG(F("Wifi setup failed to add withrottle service to mDNS"));
   }
 

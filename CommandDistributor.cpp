@@ -37,7 +37,7 @@ int16_t lastclocktime;
 int8_t lastclockrate;
 
 
-#if WIFI_ON || ETHERNET_ON || defined(SERIAL1_COMMANDS) || defined(SERIAL2_COMMANDS) || defined(SERIAL3_COMMANDS)
+#if WIFI_ON || ETHERNET_ON || defined(SERIAL1_COMMANDS) || defined(SERIAL2_COMMANDS) || defined(SERIAL3_COMMANDS) || defined(SERIAL4_COMMANDS) || defined(SERIAL5_COMMANDS) || defined(SERIAL6_COMMANDS)
 // use a buffer to allow broadcast
 StringBuffer * CommandDistributor::broadcastBufferWriter=new StringBuffer();
 template<typename... Targs> void CommandDistributor::broadcastReply(clientType type, Targs... msg){
@@ -246,6 +246,10 @@ void  CommandDistributor::broadcastLoco(byte slot) {
 #ifdef CD_HANDLE_RING
   WiThrottle::markForBroadcast(sp->loco);
 #endif
+}
+
+void  CommandDistributor::broadcastForgetLoco(int16_t loco) {
+  broadcastReply(COMMAND_TYPE, F("<l %d 0 1 0>\n<- %d>\n"), loco,loco);
 }
 
 void  CommandDistributor::broadcastPower() {

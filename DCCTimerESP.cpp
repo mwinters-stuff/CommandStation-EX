@@ -76,8 +76,13 @@ int DCCTimer::freeMemory() {
 #endif
 
 ////////////////////////////////////////////////////////////////////////
-
 #ifdef ARDUINO_ARCH_ESP32
+
+#include "esp_idf_version.h"
+#if ESP_IDF_VERSION_MAJOR > 4
+#error "DCC-EX does not support compiling with IDF version 5.0 or later. Downgrade your ESP32 library to a version that contains IDE version 4. Arduino ESP32 library 3.0.0 is too new. Downgrade to one of 2.0.9 to 2.0.17"
+#endif
+
 #include "DIAG.h"
 #include <driver/adc.h>
 #include <soc/sens_reg.h>
@@ -292,7 +297,12 @@ void DCCTimer::DCCEXInrushControlOn(uint8_t pin, int duty, bool inverted) {
 int ADCee::init(uint8_t pin) {
   pinMode(pin, ANALOG);
   adc1_config_width(ADC_WIDTH_BIT_12);
+// Espressif deprecated ADC_ATTEN_DB_11 somewhere between 2.0.9 and 2.0.17
+#ifdef ADC_ATTEN_11db
+  adc1_config_channel_atten(pinToADC1Channel(pin),ADC_ATTEN_11db);
+#else
   adc1_config_channel_atten(pinToADC1Channel(pin),ADC_ATTEN_DB_11);
+#endif
   return adc1_get_raw(pinToADC1Channel(pin));
 }
 int16_t ADCee::ADCmax() {
