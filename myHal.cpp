@@ -351,12 +351,11 @@ EXIOExpander::create(800, 18, 0x65);  // NanoEXIOExpander::create(820, 18, 0x75)
   //       #define SENSORCAM_VPIN0 #00 in config.h if not using 700. 
   //   Number of VPINs=pin count (must not exceed 80)
   //   I2C address=an available I2C address (default 0x11) 
-  //       #define ESP32CAP 0x13 in config.h to raise allowable ESP32 range of addresses
-  //       Note that the I2C address (0x11) is the default in the sensorCAM code       
   //
   // EXSensorCAM::create(700, 80, 0x11);
-EXSensorCAM::create(700, 80, 0x11);  //preference is now to use HAL(700 80 0x11) in myAutomation.h
+EXSensorCAM::create(700, 80, 0x11);  
 //EXSensorCAM::create(600, 80, 0x12);  //alternate or second CAM device address creation
+  //preference is now to use HAL(EXSensorCAM 700 80 0x11) in myAutomation.h rather than :create
 }
 
 #endif

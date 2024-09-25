@@ -16,8 +16,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
 */
-
-#define driverVer 303
+#define driverVer 304
+// v304 static oldb0;  t(##[,%%]; 
+// v303 zipped with CS 5.2.76 and uploaded to repo (with debug)
+// v302 SEND=StringFormatter::send; remove Sp(); + 'q'; memcpy( .8) -> .7); 
 // v301 improved 'f','p'&'q' code and driver version calc. Correct bsNo calc. for 'a'							 
 // v300 stripped & revised without expander functionality. Needs sensorCAM.h v300 AND CamParser.cpp
 // v222 uses '@'for EXIORDD read.  handles <NB $> and <NN $ ##>
@@ -50,7 +52,6 @@
 #ifndef IO_EX_EXSENSORCAM_H
 #define IO_EX_EXSENSORCAM_H
 #define SEND StringFormatter::send
-
 #include "IODevice.h"
 #include "I2CManager.h"
 #include "DIAG.h"
@@ -63,7 +64,6 @@
 */
 class EXSensorCAM : public IODevice {
   public:
-
     static void create(VPIN vpin, int nPins, I2CAddress i2cAddress) {
       if (checkNoOverlap(vpin, nPins, i2cAddress)) 
       new EXSensorCAM(vpin, nPins, i2cAddress);
@@ -82,7 +82,6 @@ class EXSensorCAM : public IODevice {
       addDevice(this);
     }
 //*************************
-  uint8_t oldb0;
 void _begin() {
     uint8_t status;
     // Initialise EX-SensorCAM device
@@ -223,6 +222,7 @@ int ioESP32(uint8_t i2cAddr,uint8_t *rBuf,int inbytes,uint8_t *outBuff,int outby
 //rBuf contains packet of up to 32 bytes usually with (ascii) cmd header in rBuf[0]
 //sensorCmd command header byte from CAM (in rBuf[0]?)
 int processIncomingPkt(uint8_t *rBuf,uint8_t sensorCmd) {
+static uint8_t oldb0;   //for debug only
   int k; 
   int b;
   char str[] = "11111111";
@@ -231,7 +231,7 @@ int processIncomingPkt(uint8_t *rBuf,uint8_t sensorCmd) {
     case '`':      //response to request for digitalInputStates[] table  '@'=>'`'  
       memcpy(_digitalInputStates, rBuf+1, digitalBytesNeeded);
       if ( _digitalInputStates[0]!=oldb0) { oldb0=_digitalInputStates[0];  //debug
-        for (k=0;k<5;k++) {Serial.print(" ");Serial.print(_digitalInputStates[k],HEX);}
+//        for (k=0;k<5;k++) {Serial.print(" ");Serial.print(_digitalInputStates[k],HEX);}
       }break;                                                 
 
     case EXIORDY:  //some commands give back acknowledgement only
@@ -290,7 +290,7 @@ int processIncomingPkt(uint8_t *rBuf,uint8_t sensorCmd) {
 
     case 't':      //threshold etc. from t##           //bad pkt if 't' FF's
       if(rBuf[1]==0xFF) {Serial.println("<n bad CAM 't' packet: 74 FF  n>");_savedCmd[2] +=1; return 0;}
-      SEND(&USB_SERIAL,F("<n (t[##[,%%]]) Threshold:%d sensor S00:-%d"),rBuf[1],min(rBuf[2]&0x7F,99));
+      SEND(&USB_SERIAL,F("<n (t[##[,%%%%]]) Threshold:%d sensor S00:-%d"),rBuf[1],min(rBuf[2]&0x7F,99));
       if(rBuf[2]>127) Serial.print("##* "); 
       else{ 
         if(rBuf[2]>rBuf[1]) Serial.print("-?* "); 
