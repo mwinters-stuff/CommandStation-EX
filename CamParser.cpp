@@ -15,7 +15,6 @@
 #define SENSORCAM3_VPIN 0
 #endif
 const int CAMVPINS[] = {CAM_VPIN,SENSORCAM_VPIN,SENSORCAM2_VPIN,SENSORCAM3_VPIN};
-const int16_t version=9914;
 const int16_t ver=30177;
 const int16_t ve =2899;
 
@@ -49,7 +48,7 @@ bool CamParser::parseN(Print * stream, byte paramCount, int16_t p[]) {
   }
   if (EXSensorCAM::CAMBaseVpin==0) return false; // no cam defined 
 
-  if((p[0] == ve) || (p[0] == ver) || (p[0] == version)) camop='^';
+  if((p[0] == ve) || (p[0] == ver) || (p[0] == 'V')) camop='^';
       // send UPPER case to sensorCAM to flag binary data from a DCCEX-CS parser  
   switch(paramCount) {    
     case 1:                          //<N ver> produces '^' 
