@@ -114,7 +114,7 @@ class DCCWaveform {
     byte pendingRepeats;
     static volatile bool railcomActive;     // switched on by user
     static volatile bool railcomDebug;     // switched on by user
-    
+    static bool cutoutNextTime;   // railcom
 #ifdef ARDUINO_ARCH_ESP32
   static RMTChannel *rmtMainChannel;
   static RMTChannel *rmtProgChannel;

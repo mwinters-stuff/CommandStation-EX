@@ -31,7 +31,7 @@
 #include "DCCACK.h"
 #include "DIAG.h"
 
-
+bool DCCWaveform::cutoutNextTime=false;
 DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true);
 DCCWaveform  DCCWaveform::progTrack(PREAMBLE_BITS_PROG, false);
 
@@ -71,9 +71,14 @@ void DCCWaveform::loop() {
 
 #pragma GCC push_options
 #pragma GCC optimize ("-O3")
+
 void DCCWaveform::interruptHandler() {
   // call the timer edge sensitive actions for progtrack and maintrack
   // member functions would be cleaner but have more overhead
+  if (cutoutNextTime) {
+    cutoutNextTime=false;
+    DCCTimer::startRailcomTimer(9);
+  }
   byte sigMain=signalTransform[mainTrack.state];
   byte sigProg=TrackManager::progTrackSyncMain? sigMain : signalTransform[progTrack.state];
   
@@ -140,6 +145,12 @@ void DCCWaveform::interrupt2() {
   //        or WAVE_HIGH_0 for a 0 bit.
   if (remainingPreambles > 0 ) {
     state=WAVE_MID_1;  // switch state to trigger LOW on next interrupt
+    
+    // predict railcom cutout on next interrupt 
+    cutoutNextTime= remainingPreambles==requiredPreambles
+           && railcomActive 
+           && isMainTrack;
+
     remainingPreambles--;
   
     // As we get to the end of the preambles, open the reminder window.
@@ -147,7 +158,7 @@ void DCCWaveform::interrupt2() {
     // that the reminder doesn't block a more urgent packet. 
     reminderWindowOpen=transmitRepeats==0 && remainingPreambles<4 && remainingPreambles>1;
     if (remainingPreambles==1) promotePendingPacket();
-    else if (remainingPreambles==10 && isMainTrack && railcomActive) DCCTimer::ackRailcomTimer();
+    else if (remainingPreambles==14 && isMainTrack && railcomActive) DCCTimer::ackRailcomTimer();
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
     else DCCTimer::updateMinimumFreeMemoryISR(22); 
@@ -171,13 +182,7 @@ void DCCWaveform::interrupt2() {
       bytes_sent = 0;
       // preamble for next packet will start...
       remainingPreambles = requiredPreambles;
-      
-      // set the railcom coundown to trigger half way 
-      // through the first preamble bit.
-      // Note.. we are still sending the last packet bit
-      //    and we then have to allow for the packet end bit
-      if (isMainTrack && railcomActive) DCCTimer::startRailcomTimer(9);
-      }
+    }
   }  
 }
 #pragma GCC pop_options
