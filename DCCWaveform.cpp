@@ -149,26 +149,28 @@ void DCCWaveform::interrupt2() {
   if (remainingPreambles > 0 ) {
     state=WAVE_MID_1;  // switch state to trigger LOW on next interrupt
     
-    // predict railcom cutout on next interrupt 
-    cutoutNextTime= remainingPreambles==requiredPreambles
-           && railcomActive 
-           && isMainTrack;
-
     remainingPreambles--;
   
     // As we get to the end of the preambles, open the reminder window.
     // This delays any reminder insertion until the last moment so
     // that the reminder doesn't block a more urgent packet. 
     reminderWindowOpen=transmitRepeats==0 && remainingPreambles<4 && remainingPreambles>1;
-    if (remainingPreambles==1) promotePendingPacket();
+    if (remainingPreambles==1)
+      promotePendingPacket();
     else if (isMainTrack && railcomActive) {
-      // cutout has ended so its now possible to poll the railcom detectors
-      // requiredPreambles is one higher that preamble length so
-      // if preamble length is 16 then this evaluates to 5
-      if (remainingPreambles==(requiredPreambles-12)) railcomSampleWindow=true;
-      // cutout can be ended when read
-      // see above for requiredPreambles
-      else if (remainingPreambles==(requiredPreambles-3)) DCCTimer::ackRailcomTimer();
+      if (remainingPreambles==(requiredPreambles-1)) {
+        // First look if we need to start a railcom cutout on next interrupt
+        cutoutNextTime= true;
+      } else if (remainingPreambles==(requiredPreambles-12)) {
+        // cutout has ended so its now possible to poll the railcom detectors
+        // requiredPreambles is one higher that preamble length so
+        // if preamble length is 16 then this evaluates to 5
+        railcomSampleWindow=true;
+      } else if (remainingPreambles==(requiredPreambles-3)) {
+        // cutout can be ended when read
+        // see above for requiredPreambles
+        DCCTimer::ackRailcomTimer();
+      }
     }
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
