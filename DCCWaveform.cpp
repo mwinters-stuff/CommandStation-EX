@@ -24,7 +24,6 @@
 #ifndef ARDUINO_ARCH_ESP32
   // This code is replaced entirely on an ESP32
 #include <Arduino.h>
-
 #include "DCCWaveform.h"
 #include "TrackManager.h"
 #include "DCCTimer.h"
@@ -77,6 +76,7 @@ void DCCWaveform::interruptHandler() {
   // member functions would be cleaner but have more overhead
   if (cutoutNextTime) {
     cutoutNextTime=false;
+    railcomSampleWindow=false; // about to cutout, stop reading railcom data.
     DCCTimer::startRailcomTimer(9);
   }
   byte sigMain=signalTransform[mainTrack.state];
@@ -120,12 +120,30 @@ DCCWaveform::DCCWaveform( byte preambleBits, bool isMain) {
   bytes_sent = 0;
   bits_sent = 0;
 }
-    
+
+bool DCCWaveform::railcomPossible=false;     // High accuracy only    
 volatile bool DCCWaveform::railcomActive=false;     // switched on by user
 volatile bool DCCWaveform::railcomDebug=false;     // switched on by user
+volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
+
+bool DCCWaveform::isRailcom() {
+  return railcomActive;
+}
+
+bool DCCWaveform::isRailcomSampleWindow() {
+  return railcomSampleWindow;
+}
+bool DCCWaveform::isRailcomPossible() {
+  return railcomPossible;
+}
+
+void DCCWaveform::setRailcomPossible(bool yes) {
+  railcomPossible=yes;
+  if (!yes) setRailcom(false,false);
+}
 
 bool DCCWaveform::setRailcom(bool on, bool debug) {
-  if (on) {
+  if (on && railcomPossible) {
     // TODO check possible
     railcomActive=true;
     railcomDebug=debug;
@@ -133,6 +151,7 @@ bool DCCWaveform::setRailcom(bool on, bool debug) {
   else {
     railcomActive=false;
     railcomDebug=false;
+    railcomSampleWindow=false;
   } 
   return railcomActive;
 }
@@ -158,7 +177,12 @@ void DCCWaveform::interrupt2() {
     // that the reminder doesn't block a more urgent packet. 
     reminderWindowOpen=transmitRepeats==0 && remainingPreambles<4 && remainingPreambles>1;
     if (remainingPreambles==1) promotePendingPacket();
-    else if (remainingPreambles==14 && isMainTrack && railcomActive) DCCTimer::ackRailcomTimer();
+    else if (isMainTrack && railcomActive) {
+      // cutout has ended so its now possible to poll the railcom detectors
+      if (remainingPreambles==5) railcomSampleWindow=true;
+      // cutout can be ended when read
+      else if (remainingPreambles==14) DCCTimer::ackRailcomTimer();
+    }
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
     else DCCTimer::updateMinimumFreeMemoryISR(22); 
@@ -235,7 +259,7 @@ void DCCWaveform::promotePendingPacket() {
       // Fortunately reset and idle packets are the same length
       // Note: If railcomDebug is on, then we send resets to the main
       //       track instead of idles. This means that all data will be zeros
-      //       and only the porersets will be ones, making it much
+      //       and only the presets will be ones, making it much
       //       easier to read on a logic analyser.
       memcpy( transmitPacket, (isMainTrack && (!railcomDebug)) ? idlePacket : resetPacket, sizeof(idlePacket));
       transmitLength = sizeof(idlePacket);

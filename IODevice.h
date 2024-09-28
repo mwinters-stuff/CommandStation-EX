@@ -570,6 +570,7 @@ protected:
 #include "IO_EncoderThrottle.h"
 #include "IO_TCA8418.h"
 #include "IO_NeoPixel.h"
+#include "IO_I2CRailcom.h"
 
 
 #endif // iodevice_h

@@ -23,8 +23,6 @@
  */
 #ifndef DCCWaveform_h
 #define DCCWaveform_h
-
-#include "MotorDriver.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include "DCCRMT.h"
 #include "TrackManager.h"
@@ -86,8 +84,10 @@ class DCCWaveform {
     bool isReminderWindowOpen();
     void promotePendingPacket();
     static bool setRailcom(bool on, bool debug);
-    static bool isRailcom() {return railcomActive;}
-    
+    static bool isRailcom();
+    static bool isRailcomSampleWindow();
+    static bool isRailcomPossible();
+    static void setRailcomPossible(bool yes);
   private:
 #ifndef ARDUINO_ARCH_ESP32
     volatile bool packetPending;
@@ -112,8 +112,10 @@ class DCCWaveform {
     byte pendingPacket[MAX_PACKET_SIZE+1]; // +1 for checksum
     byte pendingLength;
     byte pendingRepeats;
+    static bool railcomPossible; // High accuracy mode only
     static volatile bool railcomActive;     // switched on by user
     static volatile bool railcomDebug;     // switched on by user
+    static volatile bool railcomSampleWindow; // when safe to sample
     static bool cutoutNextTime;   // railcom
 #ifdef ARDUINO_ARCH_ESP32
   static RMTChannel *rmtMainChannel;
