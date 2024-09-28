@@ -124,20 +124,8 @@ enum TRACK_MODE : byte {TRACK_MODE_NONE = 1, TRACK_MODE_MAIN = 2, TRACK_MODE_PRO
 
 // Virtualised Motor shield 1-track hardware Interface
 
-#ifndef UNUSED_PIN     // sync define with the one in MotorDrivers.h
-#define UNUSED_PIN 255 // inside uint8_t
-#endif
+#include "Pinpair.h" // for class Pinpair
 #define MAX_PIN 254
-
-class pinpair {
-public:
-  pinpair(byte p1, byte p2) {
-    pin = p1;
-    invpin = p2;
-  };
-  byte pin = UNUSED_PIN;
-  byte invpin = UNUSED_PIN;
-};
 
 #if defined(__IMXRT1062__) || defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_SAMD) || defined(ARDUINO_ARCH_STM32)
 typedef uint32_t portreg_t;
@@ -209,7 +197,7 @@ class MotorDriver {
 	  pinMode(signalPin2, INPUT);
       }
     };
-    inline pinpair getSignalPin() { return pinpair(signalPin,signalPin2); };
+    inline Pinpair getSignalPin() { return Pinpair(signalPin,signalPin2); };
     inline int8_t getBrakePinSigned() { return invertBrake ? -brakePin : brakePin; };
     void setDCSignal(byte speedByte, uint8_t frequency=0);
     void throttleInrush(bool on);
@@ -285,7 +273,7 @@ class MotorDriver {
     else
       invertPhase = 0;
 #if defined(ARDUINO_ARCH_ESP32)
-    pinpair p = getSignalPin();
+    Pinpair p = getSignalPin();
     uint32_t *outreg = (uint32_t *)(GPIO_FUNC0_OUT_SEL_CFG_REG + 4*p.pin);
     if (invertPhase) // set or clear the invert bit in the gpio out register
       *outreg |=  ((uint32_t)0x1 << GPIO_FUNC0_OUT_INV_SEL_S);

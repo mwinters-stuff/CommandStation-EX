@@ -25,7 +25,7 @@
 #define DCCWaveform_h
 #ifdef ARDUINO_ARCH_ESP32
 #include "DCCRMT.h"
-#include "TrackManager.h"
+//#include "TrackManager.h"
 #endif
 
 
@@ -84,10 +84,19 @@ class DCCWaveform {
     bool isReminderWindowOpen();
     void promotePendingPacket();
     static bool setRailcom(bool on, bool debug);
-    static bool isRailcom();
-    static bool isRailcomSampleWindow();
-    static bool isRailcomPossible();
-    static void setRailcomPossible(bool yes);
+    inline static bool isRailcom() {
+      return railcomActive;
+    };
+    inline static bool isRailcomSampleWindow() {
+      return railcomSampleWindow;
+    };
+    inline static bool isRailcomPossible() {
+      return railcomPossible;
+    };
+    inline static void setRailcomPossible(bool yes) {
+      railcomPossible=yes;
+      if (!yes) setRailcom(false,false);
+    };
   private:
 #ifndef ARDUINO_ARCH_ESP32
     volatile bool packetPending;

@@ -126,22 +126,6 @@ volatile bool DCCWaveform::railcomActive=false;     // switched on by user
 volatile bool DCCWaveform::railcomDebug=false;     // switched on by user
 volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
 
-bool DCCWaveform::isRailcom() {
-  return railcomActive;
-}
-
-bool DCCWaveform::isRailcomSampleWindow() {
-  return railcomSampleWindow;
-}
-bool DCCWaveform::isRailcomPossible() {
-  return railcomPossible;
-}
-
-void DCCWaveform::setRailcomPossible(bool yes) {
-  railcomPossible=yes;
-  if (!yes) setRailcom(false,false);
-}
-
 bool DCCWaveform::setRailcom(bool on, bool debug) {
   if (on && railcomPossible) {
     // TODO check possible
@@ -179,9 +163,12 @@ void DCCWaveform::interrupt2() {
     if (remainingPreambles==1) promotePendingPacket();
     else if (isMainTrack && railcomActive) {
       // cutout has ended so its now possible to poll the railcom detectors
-      if (remainingPreambles==5) railcomSampleWindow=true;
+      // requiredPreambles is one higher that preamble length so
+      // if preamble length is 16 then this evaluates to 5
+      if (remainingPreambles==(requiredPreambles-12)) railcomSampleWindow=true;
       // cutout can be ended when read
-      else if (remainingPreambles==14) DCCTimer::ackRailcomTimer();
+      // see above for requiredPreambles
+      else if (remainingPreambles==(requiredPreambles-3)) DCCTimer::ackRailcomTimer();
     }
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
@@ -266,11 +253,13 @@ void DCCWaveform::promotePendingPacket() {
       transmitRepeats = 0;
       if (getResets() < 250) sentResetsSincePacket++; // only place to increment (private!)
 }
-#endif
+#endif //not ARDUINO_ARCH_ESP32
 
 #ifdef ARDUINO_ARCH_ESP32
 #include "DCCWaveform.h"
+#include "TrackManager.h"
 #include "DCCACK.h"
+#include "Pinpair.h"
 
 DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true);
 DCCWaveform  DCCWaveform::progTrack(PREAMBLE_BITS_PROG, false);
@@ -283,7 +272,7 @@ DCCWaveform::DCCWaveform(byte preambleBits, bool isMain) {
 }
 void DCCWaveform::begin() {
   for(const auto& md: TrackManager::getMainDrivers()) {
-    pinpair p = md->getSignalPin();
+    Pinpair p = md->getSignalPin();
     if(rmtMainChannel) {
       //DIAG(F("added pins %d %d to MAIN channel"), p.pin, p.invpin);
       rmtMainChannel->addPin(p); // add pin to existing main channel
@@ -294,7 +283,7 @@ void DCCWaveform::begin() {
   }
   MotorDriver *md = TrackManager::getProgDriver();
   if (md) {
-    pinpair p = md->getSignalPin();
+    Pinpair p = md->getSignalPin();
     if (rmtProgChannel) {
       //DIAG(F("added pins %d %d to PROG channel"), p.pin, p.invpin);
       rmtProgChannel->addPin(p); // add pin to existing prog channel
@@ -352,7 +341,9 @@ void IRAM_ATTR DCCWaveform::loop() {
 }
 
 bool DCCWaveform::setRailcom(bool on, bool debug) {
-  // TODO... ESP32 railcom waveform
+  // todo
+  (void)on;
+  (void)debug;
   return false;
 }
 
