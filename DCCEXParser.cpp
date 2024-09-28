@@ -1121,7 +1121,7 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
         DCC::setGlobalSpeedsteps(128);
 	DIAG(F("128 Speedsteps"));
         return true;
-#if defined(HAS_ENOUGH_MEMORY) && !defined(ARDUINO_ARCH_UNO)
+#if defined(HAS_ENOUGH_MEMORY) && !defined(ARDUINO_ARCH_UNO) && !defined(ARDUINO_ARCH_ESP32)
     case "RAILCOM"_hk:
         {   // <C RAILCOM ON|OFF|DEBUG >
             if (params<2) return false;

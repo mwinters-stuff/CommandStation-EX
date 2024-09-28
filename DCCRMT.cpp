@@ -84,7 +84,7 @@ void IRAM_ATTR interrupt(rmt_channel_t channel, void *t) {
     DCCTimer::updateMinimumFreeMemoryISR(0);
 }
 
-RMTChannel::RMTChannel(pinpair pins, bool isMain) {
+RMTChannel::RMTChannel(Pinpair pins, bool isMain) {
   byte ch;
   byte plen;
 
@@ -253,7 +253,7 @@ bool RMTChannel::addPin(byte pin, bool inverted) {
   if (err != ESP_OK) return false;
   return true;
 }
-bool RMTChannel::addPin(pinpair pins) {
+bool RMTChannel::addPin(Pinpair pins) {
   return addPin(pins.pin) && addPin(pins.invpin, true);
 }
 #endif //ESP32
