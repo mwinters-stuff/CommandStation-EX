@@ -163,9 +163,12 @@ void DCCWaveform::interrupt2() {
     if (remainingPreambles==1) promotePendingPacket();
     else if (isMainTrack && railcomActive) {
       // cutout has ended so its now possible to poll the railcom detectors
-      if (remainingPreambles==5) railcomSampleWindow=true;
+      // requiredPreambles is one higher that preamble length so
+      // if preamble length is 16 then this evaluates to 5
+      if (remainingPreambles==(requiredPreambles-12)) railcomSampleWindow=true;
       // cutout can be ended when read
-      else if (remainingPreambles==14) DCCTimer::ackRailcomTimer();
+      // see above for requiredPreambles
+      else if (remainingPreambles==(requiredPreambles-3)) DCCTimer::ackRailcomTimer();
     }
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
