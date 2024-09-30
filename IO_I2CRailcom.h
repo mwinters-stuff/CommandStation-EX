@@ -50,6 +50,7 @@
 #include "I2CManager.h"
 #include "DIAG.h"
 #include "DCCWaveform.h"
+#include "Railcom.h"
 
 // Debug and diagnostic defines, enable too many will result in slowing the driver
 #define DIAG_I2CRailcom
@@ -61,6 +62,7 @@ private:
   uint8_t _UART_CH=0x00; 
   byte _inbuf[65];
   byte _outbuf[2]; 
+  Railcom _channelMonitors[2];
 public:
   // Constructor
    I2CRailcom(VPIN firstVpin, int nPins, I2CAddress i2cAddress){
@@ -120,6 +122,9 @@ public:
           for (int i = 0; i < inlength; i++){
             DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
           }
+        auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
+        DIAG(F("Railcom Channel1=%d"), locoid);
+          
         #endif       
     } 
     
