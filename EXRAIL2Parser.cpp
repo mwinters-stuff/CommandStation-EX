@@ -210,6 +210,7 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
         default:
             break;
         }
+	break;
 
   case 'K': // <K blockid loco>  Block enter
   case 'k': // <k blockid loco>  Block exit

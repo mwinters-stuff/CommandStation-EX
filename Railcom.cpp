@@ -49,7 +49,7 @@
  **/
 
 #include "Railcom.h"
-#include <FSH.h>
+#include "FSH.h"
 
   /** Table for 8-to-6 decoding of railcom data. This table can be indexed by the
    * 8-bit value read from the railcom channel, and the return value will be
@@ -70,7 +70,7 @@
         /// The decoder is busy; send the packet again. This is typically
         /// returned when a POM CV write is still pending; the caller must
         /// re-try sending the packet later.
-        BUSY = 0xfc,
+        RCBUSY = 0xfc,
 
         /// Reserved for future expansion.
         RESVD1 = 0xfb,
@@ -107,7 +107,7 @@ const uint8_t HIGHFLASH decode[256] =
        INV,   0x2A,   0x2F,    INV,   0x31,    INV,    INV,    INV, // c
        INV,   0x29,   0x2E,    INV,   0x2D,    INV,    INV,    INV, // d
       0x2C,    INV,    INV,    INV,    INV,    INV,    INV,    INV, // d
-       INV,   BUSY,   0x28,    INV,   0x27,    INV,    INV,    INV, // e
+       INV, RCBUSY,   0x28,    INV,   0x27,    INV,    INV,    INV, // e
       0x26,    INV,    INV,    INV,    INV,    INV,    INV,    INV, // e
        ACK,    INV,    INV,    INV,    INV,    INV,    INV,    INV, // f
        INV,    INV,    INV,    INV,    INV,    INV,    INV,    INV, // f       
