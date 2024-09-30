@@ -135,6 +135,10 @@ Railcom::Railcom() {
     haveLow=false;
 }
 
+    /* returns -1: Call again next packet
+                0: No loco on track
+               >0: loco id
+    */
 int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
     auto v1=GETHIGHFLASH(decode,inbound[0]);
     if (v1>MAX_VALID) return -1;
@@ -153,12 +157,13 @@ int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
         haveLow=true;
         }
     else if (type==RMOB_EXT) {
-        /* ignore*/
+        return -1; /* ignore*/
         }
     else {
         haveHigh=false;
         haveLow=false;
+        return 0; // treat as no loco 
     }    
     if (haveHigh && haveLow) return ((holdoverHigh<<8)| holdoverLow);
-    return -1; // no loco info available 
+    return -1; // call again, need next packet 
 }
