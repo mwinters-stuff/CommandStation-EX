@@ -45,7 +45,7 @@
 
 #ifndef IO_I2CRailcom_h
 #define IO_I2CRailcom_h
-
+#include "EXRAIL3.h"
 #include "IODevice.h"
 #include "I2CManager.h"
 #include "DIAG.h"
@@ -63,6 +63,7 @@ private:
   byte _inbuf[65];
   byte _outbuf[2]; 
   Railcom _channelMonitors[2];
+  int16_t _locoInBlock[2]; 
 public:
   // Constructor
    I2CRailcom(VPIN firstVpin, int nPins, I2CAddress i2cAddress){
@@ -111,26 +112,41 @@ public:
     // Read incoming raw Railcom data, and process accordingly
     auto inlength= UART_ReadRegister(REG_RXLV);
     if (inlength==0) return; 
-    {
-        #ifdef DIAG_I2CRailcom
-          DIAG(F("Railcom: %s/%d RX Fifo: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
-        #endif
-        _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
-        I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
-        #ifdef DIAG_I2CRailcom_data
-          DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
-          for (int i = 0; i < inlength; i++){
-            DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
-          }
-        auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
-        DIAG(F("Railcom Channel1=%d"), locoid);
-          
-        #endif       
-    } 
     
-  }
+    #ifdef DIAG_I2CRailcom
+      DIAG(F("Railcom: %s/%d RX Fifo: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
+    #endif
 
-  
+    // Ask UART for the data 
+    _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
+    I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
+    
+    #ifdef DIAG_I2CRailcom_data
+      // Dump data buffer
+      DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
+      for (int i = 0; i < inlength; i++){
+        DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
+      }
+    #endif  
+    
+    // Ask Railcom to interpret the channel1 loco
+    auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
+    DIAG(F("Railcom Channel1=%d"), locoid);
+    if (locoid<0) return; // -1 indicates Railcom needs another packet
+    
+    // determine if loco in this block has changed 
+    auto prevLoco=_locoInBlock[_UART_CH];
+    if (locoid==prevLoco) return;
+    
+    // Previous loco (if any) is exiting block  
+    if (prevLoco) RMFT3::blockEvent(_firstVpin+_UART_CH,prevLoco,false);
+    
+    // new loco, if any, is entering block
+    _locoInBlock[_UART_CH]=locoid;
+    if (locoid) RMFT3::blockEvent(_firstVpin+_UART_CH,locoid,true);
+  }
+          
+ 
   void _display() override {
     DIAG(F("I2CRailcom Configured on Vpins:%u-%u %S"), _firstVpin, _firstVpin+_nPins-1,
       (_deviceState!=DEVSTATE_NORMAL) ? F("OFFLINE") : F(""));

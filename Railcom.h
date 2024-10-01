@@ -25,6 +25,11 @@
 class Railcom {
   public:
     Railcom();
+
+    /* returns -1: Call again next packet
+                0: No loco on track
+               >0: loco id
+    */
     int16_t getChannel1Loco(uint8_t * inbound);
 
   private:
