@@ -267,6 +267,8 @@ DCCWaveform  DCCWaveform::mainTrack(PREAMBLE_BITS_MAIN, true);
 DCCWaveform  DCCWaveform::progTrack(PREAMBLE_BITS_PROG, false);
 RMTChannel *DCCWaveform::rmtMainChannel = NULL;
 RMTChannel *DCCWaveform::rmtProgChannel = NULL;
+volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
+
 
 DCCWaveform::DCCWaveform(byte preambleBits, bool isMain) {
   isMainTrack = isMain;
