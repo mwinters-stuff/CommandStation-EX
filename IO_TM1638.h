@@ -23,23 +23,6 @@
 #include "IODevice.h"
 #include "DIAG.h"
 #include "TM1638x.h"
-enum DigitFormat : byte {
-    // last 4 bits are length.
-    // DF_1.. DF_8 decimal 
-    DF_1=0x01,DF_2=0x02,DF_3=0x03,DF_4=0x04,
-    DF_5=0x05,DF_6=0x06,DF_7=0x07,DF_8=0x08,
-    // DF_1X.. DF_8X HEX 
-    DF_1X=0x11,DF_2X=0x12,DF_3X=0x13,DF_4X=0x14,
-    DF_5X=0x15,DF_6X=0x16,DF_7X=0x17,DF_8X=0x18,
-    // DF_1R .. DF_4R raw 7 segmnent data 
-    // only 4 because HAL analogWrite only passes 4 bytes 
-    DF_1R=0x21,DF_2R=0x22,DF_3R=0x23,DF_4R=0x24,
-    
-    //  bits of data conversion type  (ored with length) 
-    _DF_DECIMAL=0x00,// right adjusted decimal unsigned leading zeros
-    _DF_HEX=0x10,    // right adjusted hex leading zeros 
-    _DF_RAW=0x20,    // bytes are raw 7-segment pattern (max length 4)
-};
 
 class TM1638 : public IODevice {
 private: 
@@ -63,6 +46,24 @@ private:
    } 
   
 public:
+  enum DigitFormat : byte {
+    // last 4 bits are length.
+    // DF_1.. DF_8 decimal 
+    DF_1=0x01,DF_2=0x02,DF_3=0x03,DF_4=0x04,
+    DF_5=0x05,DF_6=0x06,DF_7=0x07,DF_8=0x08,
+    // DF_1X.. DF_8X HEX 
+    DF_1X=0x11,DF_2X=0x12,DF_3X=0x13,DF_4X=0x14,
+    DF_5X=0x15,DF_6X=0x16,DF_7X=0x17,DF_8X=0x18,
+    // DF_1R .. DF_4R raw 7 segmnent data 
+    // only 4 because HAL analogWrite only passes 4 bytes 
+    DF_1R=0x21,DF_2R=0x22,DF_3R=0x23,DF_4R=0x24,
+    
+    //  bits of data conversion type  (ored with length) 
+    _DF_DECIMAL=0x00,// right adjusted decimal unsigned leading zeros
+    _DF_HEX=0x10,    // right adjusted hex leading zeros 
+    _DF_RAW=0x20,    // bytes are raw 7-segment pattern (max length 4)
+  };
+
   static void create(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin) {
     if (checkNoOverlap(firstVpin,8)) 
      new TM1638(firstVpin, clk_pin,dio_pin,stb_pin); 
@@ -104,7 +105,8 @@ void _write(VPIN vpin, int value) override {
 // Analog write sets digit displays 
 
 void _writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes) override {  
-   DIAG(F("TM1638 writeAnalogue(v=%d,l=%d,m=%d,h=%d"),vpin,lowBytes,mode,highBytes);
+   DIAG(F("TM1638 w(v=%d,l=%d,m=%d,h=%d,lx=%x,hx=%x"),
+   vpin,lowBytes,mode,highBytes,lowBytes,highBytes);
    // mode is in DataFormat defined above.
    byte formatLength=mode & 0x0F;  // last 4 bits 
    byte formatType=mode & 0xF0;         //           
@@ -114,10 +116,13 @@ void _writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes) o
    // loading is done right to left startDigit first
    int8_t startDigit=7-rightDigit; // reverse as 7 on left
    int8_t lastDigit=7-leftDigit; // reverse as 7 on left
-   auto value= ((uint32_t)highBytes<<16) | (uint32_t)lowBytes;
-
-   DIAG(F("TM1638 fl=%d ft=%x sd=%d ld=%d v=%l"),formatLength,formatType,
-   startDigit,lastDigit,value);
+   uint32_t value=highBytes;
+   value<<=16;
+   value |= (uint16_t)lowBytes;
+   
+   DIAG(F("TM1638 fl=%d ft=%x sd=%d ld=%d v=%l vx=%X"),
+   formatLength,formatType,
+   startDigit,lastDigit,value,value);
     while(startDigit<=lastDigit) {
         switch (formatType) {
             case _DF_DECIMAL:// decimal (leading zeros)

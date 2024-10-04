@@ -151,6 +151,7 @@
 #undef ROUTE_HIDDEN
 #undef ROUTE_DISABLED
 #undef ROUTE_CAPTION
+#undef SEG7
 #undef SENDLOCO 
 #undef SEQUENCE 
 #undef SERIAL 
@@ -322,6 +323,7 @@
 #define ROUTE_HIDDEN(id)
 #define ROUTE_DISABLED(id)
 #define ROUTE_CAPTION(id,caption)
+#define SEG7(vpin,value,format)
 #define SENDLOCO(cab,route) 
 #define SEQUENCE(id) 
 #define SERIAL(msg) 
