@@ -23,6 +23,23 @@
 #include "IODevice.h"
 #include "DIAG.h"
 #include "TM1638x.h"
+enum DigitFormat : byte {
+    // last 4 bits are length.
+    // DF_1.. DF_8 decimal 
+    DF_1=0x01,DF_2=0x02,DF_3=0x03,DF_4=0x04,
+    DF_5=0x05,DF_6=0x06,DF_7=0x07,DF_8=0x08,
+    // DF_1X.. DF_8X HEX 
+    DF_1X=0x11,DF_2X=0x12,DF_3X=0x13,DF_4X=0x14,
+    DF_5X=0x15,DF_6X=0x16,DF_7X=0x17,DF_8X=0x18,
+    // DF_1R .. DF_4R raw 7 segmnent data 
+    // only 4 because HAL analogWrite only passes 4 bytes 
+    DF_1R=0x21,DF_2R=0x22,DF_3R=0x23,DF_4R=0x24,
+    
+    //  bits of data conversion type  (ored with length) 
+    _DF_DECIMAL=0x00,// right adjusted decimal unsigned leading zeros
+    _DF_HEX=0x10,    // right adjusted hex leading zeros 
+    _DF_RAW=0x20,    // bytes are raw 7-segment pattern (max length 4)
+};
 
 class TM1638 : public IODevice {
 private: 
@@ -88,8 +105,9 @@ void _write(VPIN vpin, int value) override {
 
 void _writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes) override {  
    DIAG(F("TM1638 writeAnalogue(v=%d,l=%d,m=%d,h=%d"),vpin,lowBytes,mode,highBytes);
-   byte formatLength=mode & 0x0f;
-   byte formatType=mode>>4;
+   // mode is in DataFormat defined above.
+   byte formatLength=mode & 0x0F;  // last 4 bits 
+   byte formatType=mode & 0xF0;         //           
    int8_t leftDigit=vpin-_firstVpin; // 0..7 from left
    int8_t rightDigit=leftDigit+formatLength-1; // 0..7 from left
    
@@ -102,21 +120,21 @@ void _writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes) o
    startDigit,lastDigit,value);
     while(startDigit<=lastDigit) {
         switch (formatType) {
-            case 0:// decimal (leading zeros)
+            case _DF_DECIMAL:// decimal (leading zeros)
                 tm->displayVal(startDigit,value%10); 
                 value=value/10;
                 break; 
-            case 1:// HEX (leading zeros)
+            case _DF_HEX:// HEX (leading zeros)
                 tm->displayVal(startDigit,value & 0x0F); 
                 value>>=4;
                 break;  
-            case 2:// Raw 7-segment pattern 
+            case _DF_RAW:// Raw 7-segment pattern 
                 tm->displayDig(startDigit,value & 0xFF); 
                 value>>=8;
-                break; 
+                break;
             default:
-                tm->displayDig(startDigit,0); 
-                break; 
+                DIAG(F("TM1368 invalid mode 0x%x"),mode);
+                return;
             }
     startDigit++;
     } 
