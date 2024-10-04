@@ -1,0 +1,186 @@
+   /*
+ *  © 2024, Henk Kruisbrink & Chris Harlow. All rights reserved.
+ *  © 2023, Neil McKechnie. All rights reserved.
+ *  
+ *  This file is part of DCC++EX API
+ *
+ *  This is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  It is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/*
+ * 
+ * Dec 2023, Added NXP SC16IS752 I2C Dual UART
+ * The SC16IS752 has 64 bytes TX & RX FIFO buffer
+ * First version without interrupts from I2C UART and only RX/TX are used, interrupts may not be
+ * needed as the RX Fifo holds the reply 
+ * 
+ * Jan 2024, Issue with using both UARTs simultaniously, the secod uart seems to work  but the first transmit 
+ * corrupt data. This need more analysis and experimenatation. 
+ * Will push this driver to the dev branch with the uart fixed to 0 
+ * Both SC16IS750 (single uart) and SC16IS752 (dual uart, but only uart 0 is enable)
+ * 
+ * myHall.cpp configuration syntax:
+ * 
+ * I2CRailcom::create(1st vPin, vPins, I2C address);
+ * 
+ * myAutomation configuration
+ *  HAL(I2CRailcom, 1st vPin, vPins, I2C address)
+ * Parameters:
+ * 1st vPin     : First virtual pin that EX-Rail can control to play a sound, use PLAYSOUND command (alias of ANOUT)
+ * vPins        : Total number of virtual pins allocated (2 vPins are supported, one for each UART)
+ *                1st vPin for UART 0, 2nd for UART 1
+ * I2C Address  : I2C address of the serial controller, in 0x format
+ */
+
+#ifndef IO_TM1638_h
+#define IO_TM1638_h
+#include <Arduino.h>
+#include "IODevice.h"
+#include "I2CManager.h"
+#include "DIAG.h"
+
+class TM1638 : public IODevice {
+private: 
+    
+    static const uint8_t 
+     INSTRUCTION_WRITE_DATA=0x40,
+     INSTRUCTION_READ_KEY=0x42,
+     INSTRUCTION_ADDRESS_AUTO=0x40,
+     INSTRUCTION_ADDRESS_FIXED=0x44,
+     INSTRUCTION_NORMAL_MODE=0x40,
+     INSTRUCTION_TEST_MODE=0x48,
+     FIRST_DISPLAY_ADDRESS=0xC0,
+     DISPLAY_TURN_OFF=0x80,
+     DISPLAY_TURN_ON=0x88;
+
+    static constexpr uint8_t _digits[16]={ // 7-segment hex 
+      0b00111111,0b00000110,0b01011011,0b01001111,
+      0b01100110,0b01101101,0b01111101,0b00000111,
+      0b01111111,0b01101111,0b01110111,0b01111100,
+      0b00111001,0b01011110,0b01111001,0b01110001
+    };
+        
+    uint8_t _clk_pin;
+    uint8_t _stb_pin;
+    uint8_t _dio_pin;
+    uint8_t _buttons;
+    uint8_t _leds;
+    uint8_t _pulse;
+
+
+private:
+  // Constructor
+   TM1638(VPIN firstVpin, byte clk_pin,byte stb_pin,byte dio_pin){
+    _firstVpin = firstVpin;
+    _nPins = 8;
+    _clk_pin=clk_pin;
+    _stb_pin=stb_pin;
+    _dio_pin=dio_pin;
+    _buttons=0;
+    _leds=0;
+    _pulse=4;
+    pinMode(stb_pin, OUTPUT);
+    pinMode(clk_pin, OUTPUT);
+    pinMode(dio_pin, OUTPUT);
+    ArduinoPins::fastWriteDigital(stb_pin, HIGH);
+    ArduinoPins::fastWriteDigital(clk_pin, HIGH);
+    ArduinoPins::fastWriteDigital(dio_pin, HIGH); 
+    addDevice(this);
+   } 
+  
+public:
+  static void create(VPIN firstVpin, byte clk_pin,byte stb_pin,byte dio_pin) {
+    if (checkNoOverlap(firstVpin,8)) 
+     new TM1638(firstVpin, clk_pin,stb_pin,dio_pin); 
+  }
+
+  void _begin() override {
+    _deviceState = DEVSTATE_NORMAL;
+    writeCommand(DISPLAY_TURN_ON | _pulse);
+    _display();
+  }
+  
+  void strobe(bool on) {
+    ArduinoPins::fastWriteDigital(_stb_pin, on?LOW:HIGH); // select device 
+    delayMicroseconds(1);
+    }
+
+  void _loop(unsigned long currentMicros) override {
+   
+    // Read the buttons
+    strobe(true);  
+    writeData(INSTRUCTION_READ_KEY);
+    pinMode(_dio_pin, INPUT);
+  
+    _buttons=0;
+    for (uint8_t i=0; 4;i++){
+      auto data = readData();
+      _buttons |= ((data>>4) & 0x01) | (data & 0x01);
+      _buttons <<= 2; 
+    }
+    pinMode(_dio_pin,OUTPUT);
+    strobe(false); 
+  }
+           
+  void _display() override {
+    DIAG(F("TM1638 Configured on Vpins:%u-%u"), _firstVpin, _firstVpin+_nPins-1);
+  }
+
+// digital read gets button state 
+int _read(VPIN vpin) override {
+  return bitRead(_buttons,vpin - _firstVpin);
+}
+
+// digital write sets led state 
+void _write(VPIN vpin, int value) override {
+  auto pin=vpin-_firstVpin;
+  writeCommand(INSTRUCTION_WRITE_DATA | INSTRUCTION_ADDRESS_FIXED);
+  strobe(true);
+  writeData(FIRST_DISPLAY_ADDRESS + (pin*2+1));
+  writeData(value?0x01:0x00);
+  strobe(false);
+  }
+
+void writeCommand(uint8_t val)
+{	
+  strobe(true);
+  writeData(val);
+  strobe(false);
+}
+
+void writeData(uint8_t val)
+{	
+  ArduinoPins::fastWriteDigital(_clk_pin, LOW);	
+	for (uint8_t i = 0; i < 8; i++)  {
+		ArduinoPins::fastWriteDigital(_dio_pin, val & 1);
+		val >>= 1;
+  	ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+		ArduinoPins::fastWriteDigital(_clk_pin, LOW);		
+	}
+}
+
+uint8_t readData() {
+	uint8_t value = 0;
+	ArduinoPins::fastWriteDigital(_clk_pin, LOW);	
+	for (uint8_t i = 0; i < 8; ++i) {
+		ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+		value |= ArduinoPins::fastReadDigital(_dio_pin) << i;
+		ArduinoPins::fastWriteDigital(_clk_pin, LOW);
+	}
+	return value;
+}
+
+
+};
+#endif // IO_I2CRailcom_h
