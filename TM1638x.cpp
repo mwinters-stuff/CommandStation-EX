@@ -39,6 +39,7 @@ void TM1638x::reset(){
 }
 
 void TM1638x::displayVal(uint8_t digitId, uint8_t val){
+  DIAG(F("TM1638x displayVal(%d,%d)"),digitId,val);
   if ((digitId>7) | (val>15) | (val<0)) return;
   setDisplayMode(DISPLAY_TURN_ON | _pulse);
   setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_FIXED);
