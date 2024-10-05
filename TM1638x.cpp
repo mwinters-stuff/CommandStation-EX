@@ -1,37 +1,40 @@
 #include "Arduino.h"
 #include "TM1638x.h"
 #include "DIAG.h"
+#include "IODevice.h"
+
 
 
 // buttons K3/KS1-8
 uint8_t TM1638x::getButtons(){
-  digitalWrite(_stb_pin, LOW);
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
   writeData(INSTRUCTION_READ_KEY);
-  //Twait 1µs
   pinMode(_dio_pin, INPUT);
-  digitalWrite(_clk_pin, LOW);
-  uint8_t data[4];
-  for (uint8_t i=0; i<sizeof(data);i++){
-    data[i] = shiftIn(_dio_pin, _clk_pin, LSBFIRST);
+  ArduinoPins::fastWriteDigital(_clk_pin, LOW);
+  _buttons=0;
+  for (uint8_t eachByte=0; eachByte<4;eachByte++) {
+    uint8_t value = 0;
+	  for (uint8_t eachBit = 0; eachBit < 8; eachBit++) {
+		  ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+			value |= ArduinoPins::fastReadDigital(_dio_pin) << eachBit;
+		  ArduinoPins::fastWriteDigital(_clk_pin, LOW);
+	  }
+    _buttons |= value << eachByte; 
     delayMicroseconds(1);
   }
   pinMode(_dio_pin, OUTPUT);
-  digitalWrite(_stb_pin, HIGH);
-  _buttons=0;
-  for (uint8_t i=0; i<4;i++){
-    _buttons |= data[i]<<i;
-  }
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
   return _buttons;
 }
 
 void TM1638x::reset(){
   setDisplayMode(DISPLAY_TURN_ON | _pulse);
   setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_AUTO);
-  digitalWrite(_stb_pin, LOW);
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
   writeData(FIRST_DISPLAY_ADDRESS);
   for(uint8_t i=0;i<16;i++)
     writeData(0);
-  digitalWrite(_stb_pin, HIGH);
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
 }
 
 void TM1638x::displayDig(uint8_t digitId, uint8_t pgfedcba){
@@ -76,27 +79,32 @@ void TM1638x::displaySetBrightness(pulse_t newpulse){
 }
 
 void TM1638x::writeData(uint8_t data){
-  shiftOut(_dio_pin,_clk_pin,LSBFIRST,data);
+	for (uint8_t i = 0; i < 8; i++)  {
+		ArduinoPins::fastWriteDigital(_dio_pin, data & 1);
+		data >>= 1;
+		ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+		ArduinoPins::fastWriteDigital(_clk_pin, LOW);		
+	}
 } 
 
 void TM1638x::writeDataAt(uint8_t displayAddress, uint8_t data){
-    digitalWrite(_stb_pin, LOW);
+    ArduinoPins::fastWriteDigital(_stb_pin, LOW);
     writeData(displayAddress);
     writeData(data);
-    digitalWrite(_stb_pin, HIGH);
+    ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
     delayMicroseconds(1);
 }
 
 void TM1638x::setDisplayMode(uint8_t displayMode){
-  digitalWrite(_stb_pin, LOW);
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
   writeData(displayMode);
-  digitalWrite(_stb_pin, HIGH);
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
   delayMicroseconds(1);
 }
 void TM1638x::setDataInstruction(uint8_t dataInstruction){
-  digitalWrite(_stb_pin, LOW);
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
   writeData(dataInstruction);
-  digitalWrite(_stb_pin, HIGH);
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
   delayMicroseconds(1);  
 }
 
@@ -107,11 +115,11 @@ void TM1638x::test(){
     //setDisplayMode(DISPLAY_TURN_ON | _pulse);
     displayTurnOn();
     setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_AUTO);
-    digitalWrite(_stb_pin, LOW);
+    ArduinoPins::fastWriteDigital(_stb_pin, LOW);
     writeData(FIRST_DISPLAY_ADDRESS);
     for(uint8_t i=0;i<16;i++)
       writeData(val);
-    digitalWrite(_stb_pin, HIGH);
+    ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
     delay(1000);
     val = ~val;
   }
