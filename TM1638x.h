@@ -50,12 +50,6 @@ class TM1638x{
     #define DISPLAY_TURN_OFF 0x80
     #define DISPLAY_TURN_ON 0x88
 
-    uint8_t _digits[16]={
-      0b00111111,0b00000110,0b01011011,0b01001111,
-      0b01100110,0b01101101,0b01111101,0b00000111,
-      0b01111111,0b01101111,0b01110111,0b01111100,
-      0b00111001,0b01011110,0b01111001,0b01110001
-    };
         
     uint8_t _clk_pin;
     uint8_t _stb_pin;
@@ -81,12 +75,6 @@ class TM1638x{
     }
 
     /**
-    * @fn getButton
-    * @param s num of button (S1-S8)
-    * @return state of button
-    */
-    bool getButton(button_t s);
-    /**
     * @fn getButtons
     * @return state of 8 buttons
     */
@@ -99,22 +87,7 @@ class TM1638x{
     * @param state (true or false)
     */
     void writeLed(uint8_t num, bool state);
-
-    /**
-    * @fn writeLeds
-    * @brief set all 8 leds ON or OFF
-    * @param val 8bits
-    */
-    void writeLeds(uint8_t val);
-
-    /**
-    * @fn displayVal
-    * @brief put value on 7 segment display
-    * @param digitId num of digit(0-7)
-    * @param val value(0->F)
-    */
-    void displayVal(uint8_t digitId, uint8_t val);
-        
+    
     
     /**
     * @fn displayDig

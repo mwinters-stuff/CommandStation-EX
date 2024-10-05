@@ -2,10 +2,6 @@
 #include "TM1638x.h"
 #include "DIAG.h"
 
-bool TM1638x::getButton(button_t s){
-  _buttons = getButtons();
-  return bitRead(_buttons, s);
-}
 
 // buttons K3/KS1-8
 uint8_t TM1638x::getButtons(){
@@ -38,14 +34,6 @@ void TM1638x::reset(){
   digitalWrite(_stb_pin, HIGH);
 }
 
-void TM1638x::displayVal(uint8_t digitId, uint8_t val){
-  DIAG(F("TM1638x displayVal(%d,%d)"),digitId,val);
-  if ((digitId>7) | (val>15) | (val<0)) return;
-  setDisplayMode(DISPLAY_TURN_ON | _pulse);
-  setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_FIXED);
-  writeDataAt(FIRST_DISPLAY_ADDRESS+14-(digitId*2), _digits[val]);
-}
-
 void TM1638x::displayDig(uint8_t digitId, uint8_t pgfedcba){
   if (digitId>7) return;
   setDisplayMode(DISPLAY_TURN_ON | _pulse);
@@ -67,15 +55,6 @@ void TM1638x::writeLed(uint8_t num,bool state){
   setDisplayMode(DISPLAY_TURN_ON | _pulse);
   setDataInstruction(INSTRUCTION_WRITE_DATA | INSTRUCTION_ADDRESS_FIXED);
   writeDataAt(FIRST_DISPLAY_ADDRESS + (num*2-1), state);
-}
-
-void TM1638x::writeLeds(uint8_t val){
-  setDisplayMode(DISPLAY_TURN_ON | _pulse);
-  setDataInstruction(INSTRUCTION_WRITE_DATA | INSTRUCTION_ADDRESS_FIXED);
-  for(uint8_t i=1;i<9;i++){
-    writeDataAt(FIRST_DISPLAY_ADDRESS + (i*2-1), val & 0x01);
-    val >>= 1; 
-  }
 }
 
 void TM1638x::displayTurnOn(){

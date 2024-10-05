@@ -32,19 +32,10 @@ private:
     uint8_t _leds;
     unsigned long _lastLoop;
     static const int LoopHz=20; 
-
-private:
+    
   // Constructor
-   TM1638(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin){
-    _firstVpin = firstVpin;
-    _nPins = 8;
-    tm=new TM1638x(clk_pin,dio_pin,stb_pin);
-    _buttons=0;
-    _leds=0;
-    _lastLoop=micros();
-    addDevice(this);
-   } 
-  
+   TM1638(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin);
+
 public:
   enum DigitFormat : byte {
     // last 4 bits are length.
@@ -61,89 +52,17 @@ public:
     //  bits of data conversion type  (ored with length) 
     _DF_DECIMAL=0x00,// right adjusted decimal unsigned leading zeros
     _DF_HEX=0x10,    // right adjusted hex leading zeros 
-    _DF_RAW=0x20,    // bytes are raw 7-segment pattern (max length 4)
+    _DF_RAW=0x20 // bytes are raw 7-segment pattern (max length 4)
   };
 
-  static void create(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin) {
-    if (checkNoOverlap(firstVpin,8)) 
-     new TM1638(firstVpin, clk_pin,dio_pin,stb_pin); 
-  }
-
-  void _begin() override {
-    tm->reset();
-    tm->test();
-    _display();
-  }
+  static void create(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin);
   
- 
-  void _loop(unsigned long currentMicros) override {
-     if (currentMicros - _lastLoop > (1000000UL/LoopHz)) {
-         _buttons=tm->getButtons();// Read the buttons
-         _lastLoop=currentMicros;
-     }
-     // DIAG(F("TM1638 buttons %x"),_buttons); 
-  }
-           
-  void _display() override {
-    DIAG(F("TM1638 Configured on Vpins:%u-%u"), _firstVpin, _firstVpin+_nPins-1);
-  }
-
-// digital read gets button state 
-int _read(VPIN vpin) override {
-  byte pin=vpin - _firstVpin;
-  bool result=bitRead(_buttons,pin);
-  // DIAG(F("TM1638 read (%d) buttons %x = %d"),pin,_buttons,result);  
-  return result;
-}
-
-// digital write sets led state 
-void _write(VPIN vpin, int value) override {
-  // TODO.. skip if no state change  
-  tm->writeLed(vpin - _firstVpin + 1,value!=0);
-  }
-
-// Analog write sets digit displays 
-
-void _writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes) override {  
-   DIAG(F("TM1638 w(v=%d,l=%d,m=%d,h=%d,lx=%x,hx=%x"),
-   vpin,lowBytes,mode,highBytes,lowBytes,highBytes);
-   // mode is in DataFormat defined above.
-   byte formatLength=mode & 0x0F;  // last 4 bits 
-   byte formatType=mode & 0xF0;         //           
-   int8_t leftDigit=vpin-_firstVpin; // 0..7 from left
-   int8_t rightDigit=leftDigit+formatLength-1; // 0..7 from left
-   
-   // loading is done right to left startDigit first
-   int8_t startDigit=7-rightDigit; // reverse as 7 on left
-   int8_t lastDigit=7-leftDigit; // reverse as 7 on left
-   uint32_t value=highBytes;
-   value<<=16;
-   value |= (uint16_t)lowBytes;
-   
-   DIAG(F("TM1638 fl=%d ft=%x sd=%d ld=%d v=%l vx=%X"),
-   formatLength,formatType,
-   startDigit,lastDigit,value,value);
-    while(startDigit<=lastDigit) {
-        switch (formatType) {
-            case _DF_DECIMAL:// decimal (leading zeros)
-                tm->displayVal(startDigit,value%10); 
-                value=value/10;
-                break; 
-            case _DF_HEX:// HEX (leading zeros)
-                tm->displayVal(startDigit,value & 0x0F); 
-                value>>=4;
-                break;  
-            case _DF_RAW:// Raw 7-segment pattern 
-                tm->displayDig(startDigit,value & 0xFF); 
-                value>>=8;
-                break;
-            default:
-                DIAG(F("TM1368 invalid mode 0x%x"),mode);
-                return;
-            }
-    startDigit++;
-    } 
-     
-}
+  // Functions overridden in IODevice
+  void _begin();
+  void _loop(unsigned long currentMicros) override ;
+  void _writeAnalogue(VPIN vpin, int value, uint8_t param1, uint16_t param2) override;
+  void _display() override ;
+  int _read(VPIN pin) override;
+  void _write(VPIN pin,int value) override;
 };
-#endif // IO_TM1638_h
+#endif
