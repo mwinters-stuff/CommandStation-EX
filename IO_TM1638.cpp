@@ -48,7 +48,7 @@ const uint8_t HIGHFLASH _digits[16]={
   }
 
   void TM1638::_begin()  {
-    tm->reset();
+    tm->displayClear();
     tm->test();
     _display();
   }
