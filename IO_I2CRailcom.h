@@ -87,13 +87,16 @@ public:
     DIAG(F("I2CRailcom: %s UART%S detected"), 
            _I2CAddress.toString(), exists?F(""):F(" NOT"));
     if (!exists) return;
-    
+
     _UART_CH=0;
     Init_SC16IS752(); // Initialize UART0
+    // HK: currently fixed on CH 0
+    /*
     if (_nPins>1) {
       _UART_CH=1;
       Init_SC16IS752(); // Initialize UART1
     }
+    */
     if (_deviceState==DEVSTATE_INITIALISING) _deviceState=DEVSTATE_NORMAL;
     _display();
     }
@@ -107,11 +110,40 @@ public:
     if (!DCCWaveform::isRailcomSampleWindow()) return; 
 
     // flip channels each loop
-    if (_nPins>1) _UART_CH=_UART_CH?0:1;
+    _UART_CH=0; // Fix _UART_CH to 0 for now
+    //if (_nPins>1) _UART_CH=_UART_CH?0:1;
 
     // Read incoming raw Railcom data, and process accordingly
-    auto inlength= UART_ReadRegister(REG_RXLV);
-    if (inlength==0) return; 
+
+    // HK: Read Line Status register first, if bit 7 set we have a FIFO error, need to clear the FIFO and ignore any data and wait for the next cycle
+      auto reg_data = UART_ReadRegister(REG_LSR);
+       //DIAG(F("Railcom: LSR: %s/%d, Val: 0x%x"), _I2CAddress.toString(), _UART_CH, reg_data);
+        if (reg_data & 0x80 ){ // Check bit 7 of LSR, if there is a FIFO error    
+            DIAG(F("Railcom: LSR: %s/%d, Val: 0x%x"), _I2CAddress.toString(), _UART_CH, reg_data);
+            UART_WriteRegister(REG_FCR, 0x07,false);    
+        } 
+      
+    auto inlength = UART_ReadRegister(REG_RXLV);
+    DIAG(F("Railcom: %s/%d RX Fifo lvl: %d"),_I2CAddress.toString(), _UART_CH, inlength);   
+    if (inlength==0){
+      return; 
+    } else {
+        #ifdef DIAG_I2CRailcom
+          DIAG(F("Railcom: %s/%d RX Fifo: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
+        #endif
+        _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
+        I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
+        #ifdef DIAG_I2CRailcom_data
+          DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
+          for (int i = 0; i < inlength; i++){
+            DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
+          }
+        auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
+        DIAG(F("Railcom Channel1=%d"), locoid);
+          
+        #endif       
+    } 
+
     
     #ifdef DIAG_I2CRailcom
       DIAG(F("Railcom: %s/%d RX Fifo: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
@@ -148,7 +180,7 @@ public:
           
  
   void _display() override {
-    DIAG(F("I2CRailcom Configured on Vpins:%u-%u %S"), _firstVpin, _firstVpin+_nPins-1,
+    DIAG(F("I2CRailcom: Configured on Vpins:%u-%u %S"), _firstVpin, _firstVpin+_nPins-1,
       (_deviceState!=DEVSTATE_NORMAL) ? F("OFFLINE") : F(""));
   }
   
@@ -182,23 +214,51 @@ private:
   static const uint16_t _divisor = (SC16IS752_XTAL_FREQ_RAILCOM / PRESCALER) / (BAUD_RATE * 16);  
      
   void Init_SC16IS752(){ 
-    
-    if (_UART_CH==0) {
+   if (_UART_CH==0) { // HK: Currently fixed on ch 0
       // only reset on channel 0}
       UART_WriteRegister(REG_IOCONTROL, 0x08,false); // UART Software reset
-       _deviceState=DEVSTATE_INITIALISING;  // ignores error during reset which seems normal.
+       //_deviceState=DEVSTATE_INITIALISING;  // ignores error during reset which seems normal. // HK: this line is moved to below
+      auto iocontrol_readback = UART_ReadRegister(REG_IOCONTROL);
+      if (iocontrol_readback == 0x00){
+        _deviceState=DEVSTATE_INITIALISING;
+        DIAG(F("I2CRailcom: %s SRESET readback: 0x%x"),_I2CAddress.toString(), iocontrol_readback);
+      } else {
+                DIAG(F("I2CRailcom: %s SRESET: 0x%x"),_I2CAddress.toString(), iocontrol_readback);
+             }
    } 
-  
-    UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
-    UART_WriteRegister(REG_MCR, 0x00); // Set MCR to all 0, includes Clock divisor
-    UART_WriteRegister(REG_LCR, 0x80); // Divisor latch enabled
-    UART_WriteRegister(REG_DLL, _divisor);  // Write DLL
-    UART_WriteRegister(REG_DLH, (uint8_t)(_divisor >> 8)); // Write DLH
-    UART_WriteRegister(REG_LCR,  WORD_LEN | STOP_BIT | PARITY_ENA | PARITY_TYPE); // Divisor latch disabled
-    UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
+   // HK:
+   // You write 0x08 to the IOCONTROL register, setting bit 3 (SRESET), as per datasheet 8.18:
+   // "Software Reset. A write to this bit will reset the device. Once the
+   // device is reset this bit is automatically set to logic 0"
+   // So you can not readback the val you have written as this has changed.
+   // I've added an extra UART_ReadRegister(REG_IOCONTROL) and check if the return value is 0x00
+   // then set _deviceState=DEVSTATE_INITIALISING;
    
+  
+    // HK: only do clear FIFO at end of Init_SC16IS752
+    //UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
+    
+    UART_WriteRegister(REG_MCR, 0x00); // Set MCR to all 0, includes Clock divisor
+    
+    //UART_WriteRegister(REG_LCR, 0x80); // Divisor latch enabled
+    
+    UART_WriteRegister(REG_LCR, 0x80 | WORD_LEN | STOP_BIT | PARITY_ENA | PARITY_TYPE); // Divisor latch enabled and comm parameters set
+    UART_WriteRegister(REG_DLL, (uint8_t)_divisor);  // Write DLL
+    UART_WriteRegister(REG_DLH, (uint8_t)(_divisor >> 8)); // Write DLH
+    auto lcr_readback = UART_ReadRegister(REG_LCR);
+    lcr_readback = lcr_readback & 0x7F;
+    UART_WriteRegister(REG_LCR, lcr_readback); // Divisor latch disabled
+    
+    //UART_WriteRegister(REG_LCR,  WORD_LEN | STOP_BIT | PARITY_ENA | PARITY_TYPE); // Divisor latch disabled
+    
+    UART_WriteRegister(REG_FCR, 0x07,false); // Reset FIFO, clear RX & TX FIFO (write only)
+
+    // Sent some data to check if UART baudrate is set correctly
+    UART_WriteRegister(REG_THR, 9, false);
+    DIAG(F("I2CRailcom: UART %s/%d Test TX = 0x09"),_I2CAddress.toString(), _UART_CH);
+    
     if (_deviceState==DEVSTATE_INITIALISING) {
-      DIAG(F("UART %d init complete"),_UART_CH);
+      DIAG(F("I2CRailcom: UART %d init complete"),_UART_CH);
     }
       
   }
@@ -211,14 +271,14 @@ private:
     _outbuf[1]=val;
     auto status=I2CManager.write(_I2CAddress, _outbuf, (uint8_t)2);
     if(status!=I2C_STATUS_OK) {
-      DIAG(F("I2CRailcom %s/%d write reg=0x%x,data=0x%x,I2Cstate=%d"),
+      DIAG(F("I2CRailcom: %s/%d write reg=0x%x,data=0x%x,I2Cstate=%d"),
        _I2CAddress.toString(), _UART_CH, reg, val, status);
        _deviceState=DEVSTATE_FAILED;
     }
     if (readback) {    // Read it back to cross check
       auto readback=UART_ReadRegister(reg);
       if (readback!=val) {
-        DIAG(F("I2CRailcom %s/%d reg:0x%x write=0x%x read=0x%x"),_I2CAddress.toString(),_UART_CH,reg,val,readback);
+        DIAG(F("I2CRailcom readback: %s/%d reg:0x%x write=0x%x read=0x%x"),_I2CAddress.toString(),_UART_CH,reg,val,readback);
       }
     }
   }
@@ -229,7 +289,7 @@ private:
      _inbuf[0]=0;
      auto status=I2CManager.read(_I2CAddress, _inbuf, 1, _outbuf, 1);    
     if (status!=I2C_STATUS_OK) {
-       DIAG(F("I2CRailcom %s/%d read reg=0x%x,I2Cstate=%d"),
+       DIAG(F("I2CRailcom read: %s/%d read reg=0x%x,I2Cstate=%d"),
        _I2CAddress.toString(), _UART_CH, reg, status);  
        _deviceState=DEVSTATE_FAILED;
     }
