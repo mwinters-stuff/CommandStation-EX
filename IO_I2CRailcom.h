@@ -124,7 +124,7 @@ public:
         } 
       
     auto inlength = UART_ReadRegister(REG_RXLV);
-    DIAG(F("Railcom: %s/%d RX Fifo lvl: %d"),_I2CAddress.toString(), _UART_CH, inlength);   
+    //DIAG(F("Railcom: %s/%d RX Fifo lvl: %d"),_I2CAddress.toString(), _UART_CH, inlength);   
     if (inlength==0){
       return; 
     } else {
