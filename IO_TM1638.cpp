@@ -21,7 +21,6 @@
 #include "IODevice.h"
 #include "DIAG.h"
 #include "IO_TM1638.h"
-#include "TM1638x.h"
    
 const uint8_t HIGHFLASH _digits[16]={
       0b00111111,0b00000110,0b01011011,0b01001111,
@@ -34,7 +33,14 @@ const uint8_t HIGHFLASH _digits[16]={
    TM1638::TM1638(VPIN firstVpin, byte clk_pin,byte dio_pin,byte stb_pin){
     _firstVpin = firstVpin;
     _nPins = 8;
-    tm=new TM1638x(clk_pin,dio_pin,stb_pin);
+    _clk_pin = clk_pin;
+    _stb_pin = stb_pin;
+    _dio_pin = dio_pin;
+    pinMode(clk_pin,OUTPUT);
+    pinMode(stb_pin,OUTPUT);
+    pinMode(dio_pin,OUTPUT);
+    _pulse = PULSE1_16;
+      
     _buttons=0;
     _leds=0;
     _lastLoop=micros();
@@ -48,18 +54,17 @@ const uint8_t HIGHFLASH _digits[16]={
   }
 
   void TM1638::_begin()  {
-    tm->displayClear();
-    tm->test();
+    displayClear();
+    test();
     _display();
   }
   
  
   void TM1638::_loop(unsigned long currentMicros)  {
      if (currentMicros - _lastLoop > (1000000UL/LoopHz)) {
-         _buttons=tm->getButtons();// Read the buttons
-         _lastLoop=currentMicros;
-     }
-     // DIAG(F("TM1638 buttons %x"),_buttons); 
+         _buttons=getButtons();// Read the buttons
+         _lastLoop=currentMicros;   
+     } 
   }
            
   void TM1638::_display()  {
@@ -77,14 +82,12 @@ int TM1638::_read(VPIN vpin)  {
 // digital write sets led state 
 void TM1638::_write(VPIN vpin, int value)  {
   // TODO.. skip if no state change  
-  tm->writeLed(vpin - _firstVpin + 1,value!=0);
+  writeLed(vpin - _firstVpin + 1,value!=0);
   }
 
 // Analog write sets digit displays 
 
 void TM1638::_writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t highBytes)  {  
-   DIAG(F("TM1638 w(v=%d,l=%d,m=%d,h=%d,lx=%x,hx=%x"),
-   vpin,lowBytes,mode,highBytes,lowBytes,highBytes);
    // mode is in DataFormat defined above.
    byte formatLength=mode & 0x0F;  // last 4 bits 
    byte formatType=mode & 0xF0;         //           
@@ -98,21 +101,20 @@ void TM1638::_writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t high
    value<<=16;
    value |= (uint16_t)lowBytes;
    
-   DIAG(F("TM1638 fl=%d ft=%x sd=%d ld=%d v=%l vx=%X"),
-   formatLength,formatType,
-   startDigit,lastDigit,value,value);
+   //DIAG(F("TM1638 fl=%d ft=%x sd=%d ld=%d v=%l vx=%X"),
+   // formatLength,formatType,startDigit,lastDigit,value,value);
     while(startDigit<=lastDigit) {
         switch (formatType) {
             case _DF_DECIMAL:// decimal (leading zeros)
-                tm->displayDig(startDigit,GETHIGHFLASH(_digits,(value%10))); 
+                displayDig(startDigit,GETHIGHFLASH(_digits,(value%10))); 
                 value=value/10;
                 break; 
             case _DF_HEX:// HEX (leading zeros)
-                tm->displayDig(startDigit,GETHIGHFLASH(_digits,(value & 0x0F))); 
+                displayDig(startDigit,GETHIGHFLASH(_digits,(value & 0x0F))); 
                 value>>=4;
                 break;  
             case _DF_RAW:// Raw 7-segment pattern 
-                tm->displayDig(startDigit,value & 0xFF); 
+                displayDig(startDigit,value & 0xFF); 
                 value>>=8;
                 break;
             default:
@@ -121,7 +123,92 @@ void TM1638::_writeAnalogue(VPIN vpin, int lowBytes, uint8_t mode, uint16_t high
             }
     startDigit++;
     } 
+}
      
+uint8_t TM1638::getButtons(){
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
+  writeData(INSTRUCTION_READ_KEY);
+  pinMode(_dio_pin, INPUT);
+  ArduinoPins::fastWriteDigital(_clk_pin, LOW);
+  uint8_t buttons=0;
+  for (uint8_t eachByte=0; eachByte<4;eachByte++) {
+    uint8_t value = 0;
+	  for (uint8_t eachBit = 0; eachBit < 8; eachBit++) {
+		  ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+			value |= ArduinoPins::fastReadDigital(_dio_pin) << eachBit;
+		  ArduinoPins::fastWriteDigital(_clk_pin, LOW);
+	  }
+    buttons |= value << eachByte; 
+    delayMicroseconds(1);
+  }
+  pinMode(_dio_pin, OUTPUT);
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
+  return buttons;
+}
+
+
+void TM1638::displayDig(uint8_t digitId, uint8_t pgfedcba){
+  if (digitId>7) return;
+  setDataInstruction(DISPLAY_TURN_ON | _pulse);
+  setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_FIXED);
+  writeDataAt(FIRST_DISPLAY_ADDRESS+14-(digitId*2), pgfedcba);
+}
+
+void TM1638::displayClear(){
+  setDataInstruction(DISPLAY_TURN_ON | _pulse);
+  setDataInstruction(INSTRUCTION_WRITE_DATA | INSTRUCTION_ADDRESS_FIXED);
+  for (uint8_t i=0;i<15;i+=2){
+    writeDataAt(FIRST_DISPLAY_ADDRESS+i,0x00);
+  }
+}
+
+void TM1638::writeLed(uint8_t num,bool state){
+  if ((num<1) | (num>8)) return;
+  setDataInstruction(DISPLAY_TURN_ON | _pulse);
+  setDataInstruction(INSTRUCTION_WRITE_DATA | INSTRUCTION_ADDRESS_FIXED);
+  writeDataAt(FIRST_DISPLAY_ADDRESS + (num*2-1), state);
+}
+
+
+void TM1638::writeData(uint8_t data){
+	for (uint8_t i = 0; i < 8; i++)  {
+		ArduinoPins::fastWriteDigital(_dio_pin, data & 1);
+		data >>= 1;
+		ArduinoPins::fastWriteDigital(_clk_pin, HIGH);
+		ArduinoPins::fastWriteDigital(_clk_pin, LOW);		
+	}
+} 
+
+void TM1638::writeDataAt(uint8_t displayAddress, uint8_t data){
+    ArduinoPins::fastWriteDigital(_stb_pin, LOW);
+    writeData(displayAddress);
+    writeData(data);
+    ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
+    delayMicroseconds(1);
+}
+
+void TM1638::setDataInstruction(uint8_t dataInstruction){
+  ArduinoPins::fastWriteDigital(_stb_pin, LOW);
+  writeData(dataInstruction);
+  ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
+  delayMicroseconds(1);  
+}
+
+void TM1638::test(){
+  DIAG(F("TM1638 test"));
+  uint8_t val=0;
+  for(uint8_t i=0;i<5;i++){
+    setDataInstruction(DISPLAY_TURN_ON | _pulse);
+    setDataInstruction(INSTRUCTION_WRITE_DATA| INSTRUCTION_ADDRESS_AUTO);
+    ArduinoPins::fastWriteDigital(_stb_pin, LOW);
+    writeData(FIRST_DISPLAY_ADDRESS);
+    for(uint8_t i=0;i<16;i++)
+      writeData(val);
+    ArduinoPins::fastWriteDigital(_stb_pin, HIGH);
+    delay(1000);
+    val = ~val;
+  }
+
 }
 
 
