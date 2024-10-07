@@ -17,6 +17,9 @@
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+/* Credit to https://github.com/dvarrel/TM1638 for the basic formulae.*/
+
+
 #include <Arduino.h>
 #include "IODevice.h"
 #include "DIAG.h"
