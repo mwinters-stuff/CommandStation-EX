@@ -16,10 +16,11 @@
  *  You should have received a copy of the GNU General Public License
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
 */
-#define driverVer 304
+#define driverVer 305
+// v305 less debug & alpha ordered switch
 // v304 static oldb0;  t(##[,%%]; 
 // v303 zipped with CS 5.2.76 and uploaded to repo (with debug)
-// v302 SEND=StringFormatter::send; remove Sp(); + 'q'; memcpy( .8) -> .7); 
+// v302 SEND=StringFormatter::send, remove Sp(), add 'q', memcpy( .8) -> .7); 
 // v301 improved 'f','p'&'q' code and driver version calc. Correct bsNo calc. for 'a'							 
 // v300 stripped & revised without expander functionality. Needs sensorCAM.h v300 AND CamParser.cpp
 // v222 uses '@'for EXIORDD read.  handles <NB $> and <NN $ ##>
@@ -222,7 +223,7 @@ int ioESP32(uint8_t i2cAddr,uint8_t *rBuf,int inbytes,uint8_t *outBuff,int outby
 //rBuf contains packet of up to 32 bytes usually with (ascii) cmd header in rBuf[0]
 //sensorCmd command header byte from CAM (in rBuf[0]?)
 int processIncomingPkt(uint8_t *rBuf,uint8_t sensorCmd) {
-static uint8_t oldb0;   //for debug only
+//static uint8_t oldb0;   //for debug only
   int k; 
   int b;
   char str[] = "11111111";
@@ -230,9 +231,10 @@ static uint8_t oldb0;   //for debug only
   switch (sensorCmd){
     case '`':      //response to request for digitalInputStates[] table  '@'=>'`'  
       memcpy(_digitalInputStates, rBuf+1, digitalBytesNeeded);
-      if ( _digitalInputStates[0]!=oldb0) { oldb0=_digitalInputStates[0];  //debug
+//      if ( _digitalInputStates[0]!=oldb0) { oldb0=_digitalInputStates[0];  //debug
 //        for (k=0;k<5;k++) {Serial.print(" ");Serial.print(_digitalInputStates[k],HEX);}
-      }break;                                                 
+//      }
+      break;                                                 
 
     case EXIORDY:  //some commands give back acknowledgement only
       break;
@@ -241,33 +243,12 @@ static uint8_t oldb0;   //for debug only
       DIAG(F("CAM cmd error 0xFE 0x%x"),rBuf[1]); 
       break;
 
-    case '~':      //information from '^' version request <N ve[r]>
+    case '~':      //information from '^' version request <N v[er]>
       DIAG(F("EX-SensorCAM device found, I2C:%s,CAM Version v%d.%d.%d vpins %u-%u"),
               _I2CAddress.toString(), rBuf[1]/10, rBuf[1]%10, rBuf[2],(int) _firstVpin, (int) _firstVpin +_nPins-1);
       DIAG(F("IO_EXSensorCAM driver  v0.%d.%d vpin: %d "), driverVer/100,driverVer%100,_firstVpin);
       break;
-
-    case 'i':      //information from i%%
-      k=256*rBuf[5]+rBuf[4];
-      DIAG(F("(i%%%%[,$$]) Info: Sensor 0%o(%d) enabled:%d status:%d row=%d x=%d Twin=0%o pvtThreshold=%d A~%d")
-              ,rBuf[1],rBuf[1],rBuf[3],rBuf[2],rBuf[6],k,rBuf[7],rBuf[9],int(rBuf[8])*16);	 
-      break;
-
-    case 'm':
-      DIAG(F("(m$[,##]) Min/max: $ frames min2flip (trip) %d, maxSensors 0%o, minSensors 0%o, nLED %d,"
-              " threshold %d, TWOIMAGE_MAXBS 0%o"),rBuf[1],rBuf[3],rBuf[2],rBuf[4],rBuf[5],rBuf[6]);                                                               								
-      break;
-
-    case 'n':
-      DIAG(F("(n$[,##]) Nominate: $ nLED %d, ## minSensors 0%o (maxSensors 0%o threshold %d)")
-                                       ,rBuf[4],rBuf[2],rBuf[3],rBuf[5]);                                                               
-      break;
-
-    case 'q':
-      for (int i =0; i<8; i++) str[i] = ((rBuf[2] << i) & 0x80 ? '1' : '0');
-      DIAG(F("(q $) Query bank %c ENABLED sensors(S%c7-%c0): %s "), rBuf[1], rBuf[1], rBuf[1], str);
-      break;
-
+ 
     case 'f':
       DIAG(F("(f %%%%) frame header 'f' for bsNo %d/%d - showing Quarter sample (1 row) only"), rBuf[1]/8,rBuf[1]%8);  
       SEND(&USB_SERIAL,F("<n  row: %d  Ref bytes: "),rBuf[2]);
@@ -279,6 +260,22 @@ static uint8_t oldb0;   //for debug only
       Serial.print(" n>\n");
       break; 
 
+    case 'i':      //information from i%%
+      k=256*rBuf[5]+rBuf[4];
+      DIAG(F("(i%%%%[,$$]) Info: Sensor 0%o(%d) enabled:%d status:%d row=%d x=%d Twin=0%o pvtThreshold=%d A~%d")
+              ,rBuf[1],rBuf[1],rBuf[3],rBuf[2],rBuf[6],k,rBuf[7],rBuf[9],int(rBuf[8])*16);	 
+      break;
+
+    case 'm':
+      DIAG(F("(m$[,##]) Min/max: $ frames min2flip (trip) %d, maxSensors 0%o, minSensors 0%o, nLED %d,"
+              " threshold %d, TWOIMAGE_MAXBS 0%o"),rBuf[1],rBuf[3],rBuf[2],rBuf[4],rBuf[5],rBuf[6]);
+      break;
+
+    case 'n':
+      DIAG(F("(n$[,##]) Nominate: $ nLED %d, ## minSensors 0%o (maxSensors 0%o threshold %d)")
+                                       ,rBuf[4],rBuf[2],rBuf[3],rBuf[5]);                                                               
+      break;
+
     case 'p':
       b=rBuf[1]-2;  
       if(b<4) { Serial.print("<n (p%%) Bank empty  n>\n"); break; }
@@ -286,6 +283,11 @@ static uint8_t oldb0;   //for debug only
       for (int j=2; j<b; j+=3)  
         SEND(&USB_SERIAL,F(" S[%d%d]: r=%d x=%d"),0x7F&rBuf[j]/8,0x7F&rBuf[j]%8,rBuf[j+1],rBuf[j+2]+2*(rBuf[j]&0x80));
       Serial.print("  n>\n");
+      break;
+
+    case 'q':
+      for (int i =0; i<8; i++) str[i] = ((rBuf[2] << i) & 0x80 ? '1' : '0');
+      DIAG(F("(q $) Query bank %c ENABLED sensors(S%c7-%c0): %s "), rBuf[1], rBuf[1], rBuf[1], str);
       break;
 
     case 't':      //threshold etc. from t##           //bad pkt if 't' FF's

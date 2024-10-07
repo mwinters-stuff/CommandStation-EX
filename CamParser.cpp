@@ -1,5 +1,5 @@
 
-//sensorCAM parser.cpp version 3.01  Aug 2024
+//sensorCAM parser.cpp version 3.03  Sep 2024
 #include "CamParser.h"
 #include "FSH.h"
 #include "IO_EXSensorCAM.h"
@@ -48,17 +48,18 @@ bool CamParser::parseN(Print * stream, byte paramCount, int16_t p[]) {
   }
   if (EXSensorCAM::CAMBaseVpin==0) return false; // no cam defined 
 
-  if((p[0] == ve) || (p[0] == ver) || (p[0] == 'V')) camop='^';
+  
       // send UPPER case to sensorCAM to flag binary data from a DCCEX-CS parser  
   switch(paramCount) {    
-    case 1:                          //<N ver> produces '^' 
+    case 1:                          //<N ver> produces '^'
+      if((p[0] == ve) || (p[0] == ver) || (p[0] == 'V')) camop='^'; 
       if (STRCHR_P((const char *)F("EFGMQRVW^"),camop) == nullptr) return false;
-      if (camop=='F') camop=']';     //<NF> for Reset/Finish webCAM.
       if (camop=='Q') param3=10;     //<NQ> for activation state of all 10 banks of sensors
-      break;    // Coded as ']' else conflicts with <Nf %%>
+      if (camop=='F') camop=']';     //<NF> for Reset/Finish webCAM.
+      break;    // F Coded as ']' else conflicts with <Nf %%>
     
     case 2:                          //<N camop p1>  
-      if (STRCHR_P((const char *)F("ABFILMNOPQRSTUV^"),camop)==nullptr) return false;
+      if (STRCHR_P((const char *)F("ABFILMNOPQRSTUV"),camop)==nullptr) return false;
       param1=p[1];
       break;
     
@@ -74,7 +75,7 @@ bool CamParser::parseN(Print * stream, byte paramCount, int16_t p[]) {
       param3 = p[2];
       break;
     
-    case 4:         //<N a id row col> 
+    case 4:          //<N a id row col> 
       if (camop!='A') return false;          //must start with 'a' 
       if (p[3]>316 || p[3]<0) return false;
       if (p[2]>236 || p[2]<0) return false;
