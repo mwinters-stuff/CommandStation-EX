@@ -59,7 +59,7 @@
 class I2CRailcom : public IODevice {
 private: 
   // SC16IS752 defines
-  uint8_t _UART_CH=0x00; 
+  uint8_t _UART_CH=0x00; // channel 0 or 1 flips each loop if npins>1
   byte _inbuf[65];
   byte _outbuf[2]; 
   Railcom _channelMonitors[2];
@@ -107,48 +107,37 @@ public:
     // return if in cutout or cutout very soon.  
     if (!DCCWaveform::isRailcomSampleWindow()) return; 
 
-    // flip channels each loop
-    _UART_CH=0; 
+    // IF we have 2 channels, flip channels each loop
     if (_nPins>1) _UART_CH=_UART_CH?0:1;
 
     // Read incoming raw Railcom data, and process accordingly
 
     auto inlength = UART_ReadRegister(REG_RXLV);
-    if (inlength==0){
-      return; 
-    } else {
-        #ifdef DIAG_I2CRailcom
-          DIAG(F("Railcom: %s/%d RX Fifo length: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
-        #endif
-        _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
-        I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
-        #ifdef DIAG_I2CRailcom_data
-          DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
-          for (int i = 0; i < inlength; i++){
-            DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
-          }
-        auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
-        DIAG(F("Railcom Channel1=%d"), locoid);
-          
-        #endif       
-    } 
+    if (inlength==0) return; 
     
-   
-    // Ask UART for the data 
+    #ifdef DIAG_I2CRailcom
+          DIAG(F("Railcom: %s/%d RX Fifo length: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
+    #endif
+
+    // Read data buffer from UART
     _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
     I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
-    
+
+    // HK: Reset FIFO at end of read cycle
+    UART_WriteRegister(REG_FCR, 0x07,false);
+
     #ifdef DIAG_I2CRailcom_data
-      // Dump data buffer
       DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
       for (int i = 0; i < inlength; i++){
         DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
       }
-    #endif  
+    #endif
     
     // Ask Railcom to interpret the channel1 loco
     auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
-    DIAG(F("Railcom Channel1=%d"), locoid);
+    #ifdef DIAG_I2CRailcom
+      DIAG(F("Railcom Channel1=%d"), locoid);
+    #endif
     if (locoid<0) return; // -1 indicates Railcom needs another packet
     
     // determine if loco in this block has changed 
@@ -161,8 +150,6 @@ public:
     // new loco, if any, is entering block
     _locoInBlock[_UART_CH]=locoid;
     if (locoid) RMFT3::blockEvent(_firstVpin+_UART_CH,locoid,true);
-
-    UART_WriteRegister(REG_FCR, 0x07,false); // HK: Reset FIFO at end of read cycle
   }
           
  
