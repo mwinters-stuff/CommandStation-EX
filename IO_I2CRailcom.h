@@ -54,14 +54,15 @@
 
 // Debug and diagnostic defines, enable too many will result in slowing the driver
 #define DIAG_I2CRailcom
-#define DIAG_I2CRailcom_data
+//#define DIAG_I2CRailcom_data
 
 class I2CRailcom : public IODevice {
 private: 
   // SC16IS752 defines
   uint8_t _UART_CH=0x00; // channel 0 or 1 flips each loop if npins>1
   byte _inbuf[65];
-  byte _outbuf[2]; 
+  byte _outbuf[2];
+  byte cutoutCounter[2]; 
   Railcom _channelMonitors[2];
   int16_t _locoInBlock[2]; 
 public:
@@ -87,7 +88,9 @@ public:
     DIAG(F("I2CRailcom: %s UART%S detected"), 
            _I2CAddress.toString(), exists?F(""):F(" NOT"));
     if (!exists) return;
-
+    _locoInBlock[0]=0;
+    _locoInBlock[1]=0;
+  
     _UART_CH=0;
     Init_SC16IS752(); // Initialize UART0    
     if (_nPins>1) {
@@ -106,43 +109,47 @@ public:
 
     // return if in cutout or cutout very soon.  
     if (!DCCWaveform::isRailcomSampleWindow()) return; 
-
+    
     // IF we have 2 channels, flip channels each loop
     if (_nPins>1) _UART_CH=_UART_CH?0:1;
 
+    // have we read this cutout already?
+    auto cut=DCCWaveform::getRailcomCutoutCounter();
+    if (cutoutCounter[_UART_CH]==cut) return; 
+    cutoutCounter[_UART_CH]=cut; 
+    
     // Read incoming raw Railcom data, and process accordingly
 
     auto inlength = UART_ReadRegister(REG_RXLV);
     if (inlength==0) return; 
-    
-    #ifdef DIAG_I2CRailcom
-          DIAG(F("Railcom: %s/%d RX Fifo length: %d"),_I2CAddress.toString(), _UART_CH, inlength); 
-    #endif
-
-    // Read data buffer from UART
-    _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
-    I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
-
+    if (inlength> sizeof(_inbuf)) inlength=sizeof(_inbuf); 
+    _inbuf[0]=0;
+    if (inlength>0) {
+      // Read data buffer from UART
+      _outbuf[0]=(byte)(REG_RHR << 3 | _UART_CH << 1);
+      I2CManager.read(_I2CAddress, _inbuf, inlength, _outbuf, 1); 
+    }
     // HK: Reset FIFO at end of read cycle
     UART_WriteRegister(REG_FCR, 0x07,false);
+    //if (inlength<2) return;  
 
     #ifdef DIAG_I2CRailcom_data
-      DIAG(F("Railcom %s/%d RX FIFO Data"), _I2CAddress.toString(), _UART_CH);
+      DIAG(F("Railcom %s/%d RX FIFO Data, %d"), _I2CAddress.toString(), _UART_CH,inlength);
       for (int i = 0; i < inlength; i++){
-        DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
+        if (_inbuf[i])DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
       }
     #endif
     
     // Ask Railcom to interpret the channel1 loco
     auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
-    #ifdef DIAG_I2CRailcom
-      DIAG(F("Railcom Channel1=%d"), locoid);
-    #endif
     if (locoid<0) return; // -1 indicates Railcom needs another packet
-    
+   
     // determine if loco in this block has changed 
     auto prevLoco=_locoInBlock[_UART_CH];
     if (locoid==prevLoco) return;
+    #ifdef DIAG_I2CRailcom
+      DIAG(F("Railcom vpin %d was %d is %d "), _firstVpin+_UART_CH, prevLoco, locoid);
+    #endif
     
     // Previous loco (if any) is exiting block  
     if (prevLoco) RMFT3::blockEvent(_firstVpin+_UART_CH,prevLoco,false);

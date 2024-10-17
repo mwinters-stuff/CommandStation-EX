@@ -77,6 +77,7 @@ void DCCWaveform::interruptHandler() {
   if (cutoutNextTime) {
     cutoutNextTime=false;
     railcomSampleWindow=false; // about to cutout, stop reading railcom data.
+    railcomCutoutCounter++;
     DCCTimer::startRailcomTimer(9);
   }
   byte sigMain=signalTransform[mainTrack.state];
@@ -125,6 +126,7 @@ bool DCCWaveform::railcomPossible=false;     // High accuracy only
 volatile bool DCCWaveform::railcomActive=false;     // switched on by user
 volatile bool DCCWaveform::railcomDebug=false;     // switched on by user
 volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
+volatile byte DCCWaveform::railcomCutoutCounter=0;    // cyclic cutout
 
 bool DCCWaveform::setRailcom(bool on, bool debug) {
   if (on && railcomPossible) {

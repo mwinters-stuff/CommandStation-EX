@@ -87,6 +87,9 @@ class DCCWaveform {
     inline static bool isRailcom() {
       return railcomActive;
     };
+    inline static byte getRailcomCutoutCounter() {
+      return railcomCutoutCounter;
+    };
     inline static bool isRailcomSampleWindow() {
       return railcomSampleWindow;
     };
@@ -125,6 +128,7 @@ class DCCWaveform {
     static volatile bool railcomActive;     // switched on by user
     static volatile bool railcomDebug;     // switched on by user
     static volatile bool railcomSampleWindow; // when safe to sample
+    static volatile byte railcomCutoutCounter; // incremented for each cutout
     static bool cutoutNextTime;   // railcom
 #ifdef ARDUINO_ARCH_ESP32
   static RMTChannel *rmtMainChannel;

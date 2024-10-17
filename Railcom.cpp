@@ -133,6 +133,7 @@ const uint8_t HIGHFLASH decode[256] =
 Railcom::Railcom() {
     haveHigh=false;
     haveLow=false;
+    packetsWithNoData=0;
 }
 
     /* returns -1: Call again next packet
@@ -141,9 +142,7 @@ Railcom::Railcom() {
     */
 int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
     auto v1=GETHIGHFLASH(decode,inbound[0]);
-    if (v1>MAX_VALID) return -1;
     auto v2=GETHIGHFLASH(decode,inbound[1]);
-    if (v2>MAX_VALID) return -1;
     auto packet=(v1<<6) | v2;
     // packet is 12 bits TTTTDDDDDDDD
     auto type=packet>>8;   
@@ -151,18 +150,24 @@ int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
     if (type==RMOB_ADRHIGH) {
         holdoverHigh=data;
         haveHigh=true;
+        packetsWithNoData=0;
         }
     else if (type==RMOB_ADRLOW) {
         holdoverLow=data;
         haveLow=true;
+        packetsWithNoData=0;
         }
     else if (type==RMOB_EXT) {
         return -1; /* ignore*/
         }
     else {
-        haveHigh=false;
-        haveLow=false;
-        return 0; // treat as no loco 
+        if (packetsWithNoData>MAX_WAIT_FOR_GLITCH) {
+            haveHigh=false;
+            haveLow=false;
+            return 0; // treat as no loco
+        }
+        packetsWithNoData++;
+        return -1; // need more data          
     }    
     if (haveHigh && haveLow) return ((holdoverHigh<<8)| holdoverLow);
     return -1; // call again, need next packet 

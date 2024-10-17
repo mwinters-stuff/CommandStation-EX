@@ -34,7 +34,9 @@ class Railcom {
 
   private:
  uint8_t holdoverHigh,holdoverLow;
-bool haveHigh,haveLow;  
+ bool haveHigh,haveLow; 
+ uint8_t packetsWithNoData;  
+ static const byte MAX_WAIT_FOR_GLITCH=10; // number of dead or empty packets before assuming loco=0 
 };
 
 #endif
