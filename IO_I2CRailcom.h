@@ -45,7 +45,6 @@
 
 #ifndef IO_I2CRailcom_h
 #define IO_I2CRailcom_h
-#include "EXRAIL3.h"
 #include "IODevice.h"
 #include "I2CManager.h"
 #include "DIAG.h"
@@ -54,7 +53,6 @@
 
 // Debug and diagnostic defines, enable too many will result in slowing the driver
 #define DIAG_I2CRailcom
-//#define DIAG_I2CRailcom_data
 
 class I2CRailcom : public IODevice {
 private: 
@@ -63,14 +61,15 @@ private:
   byte _inbuf[65];
   byte _outbuf[2];
   byte cutoutCounter[2]; 
-  Railcom _channelMonitors[2];
-  int16_t _locoInBlock[2]; 
+  Railcom * _channelMonitors[2]; 
 public:
   // Constructor
    I2CRailcom(VPIN firstVpin, int nPins, I2CAddress i2cAddress){
     _firstVpin = firstVpin;
     _nPins = nPins;
     _I2CAddress = i2cAddress;
+    _channelMonitors[0]=new Railcom(firstVpin);
+    if (nPins>1) _channelMonitors[1]=new Railcom(firstVpin+1);
     addDevice(this);
    } 
   
@@ -88,8 +87,6 @@ public:
     DIAG(F("I2CRailcom: %s UART%S detected"), 
            _I2CAddress.toString(), exists?F(""):F(" NOT"));
     if (!exists) return;
-    _locoInBlock[0]=0;
-    _locoInBlock[1]=0;
   
     _UART_CH=0;
     Init_SC16IS752(); // Initialize UART0    
@@ -131,32 +128,9 @@ public:
     }
     // HK: Reset FIFO at end of read cycle
     UART_WriteRegister(REG_FCR, 0x07,false);
-    //if (inlength<2) return;  
-
-    #ifdef DIAG_I2CRailcom_data
-      DIAG(F("Railcom %s/%d RX FIFO Data, %d"), _I2CAddress.toString(), _UART_CH,inlength);
-      for (int i = 0; i < inlength; i++){
-        if (_inbuf[i])DIAG(F("[0x%x]: 0x%x"), i, _inbuf[i]);  
-      }
-    #endif
     
-    // Ask Railcom to interpret the channel1 loco
-    auto locoid=_channelMonitors[_UART_CH].getChannel1Loco(_inbuf);
-    if (locoid<0) return; // -1 indicates Railcom needs another packet
-   
-    // determine if loco in this block has changed 
-    auto prevLoco=_locoInBlock[_UART_CH];
-    if (locoid==prevLoco) return;
-    #ifdef DIAG_I2CRailcom
-      DIAG(F("Railcom vpin %d was %d is %d "), _firstVpin+_UART_CH, prevLoco, locoid);
-    #endif
-    
-    // Previous loco (if any) is exiting block  
-    if (prevLoco) RMFT3::blockEvent(_firstVpin+_UART_CH,prevLoco,false);
-    
-    // new loco, if any, is entering block
-    _locoInBlock[_UART_CH]=locoid;
-    if (locoid) RMFT3::blockEvent(_firstVpin+_UART_CH,locoid,true);
+    // Ask Railcom to interpret the raw data
+    _channelMonitors[_UART_CH]->process(_inbuf,inlength);
   }
           
  

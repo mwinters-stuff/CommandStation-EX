@@ -49,7 +49,13 @@
  **/
 
 #include "Railcom.h"
+#include "defines.h"
 #include "FSH.h"
+#include "EXRAIL3.h"
+#include "DIAG.h"
+
+//#define DIAG_I2CRailcom_data
+
 
   /** Table for 8-to-6 decoding of railcom data. This table can be indexed by the
    * 8-bit value read from the railcom channel, and the return value will be
@@ -129,21 +135,28 @@ const uint8_t HIGHFLASH decode[256] =
         RMOB_LOGON_ENABLE_FEEDBACK = 15,
 };
 
-
-Railcom::Railcom() {
+Railcom::Railcom(uint16_t blockvpin) {
     haveHigh=false;
     haveLow=false;
     packetsWithNoData=0;
+    locoOnTrack=0;
+    vpin=blockvpin;
 }
 
     /* returns -1: Call again next packet
                 0: No loco on track
                >0: loco id
     */
-int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
+void Railcom::process(uint8_t * inbound, uint8_t length) {
+    #ifdef DIAG_I2CRailcom_data
+      DIAG(F("Railcom %d RX FIFO Data, %d"), vpin,length);
+      for (int i = 0; i < 2; i++){
+        if (inbound[i]) DIAG(F("[0x%x]: 0x%x"), i, inbound[i]);  
+      }
+    #endif
     auto v1=GETHIGHFLASH(decode,inbound[0]);
-    auto v2=GETHIGHFLASH(decode,inbound[1]);
-    auto packet=(v1<<6) | v2;
+    auto v2=(length>2) ? GETHIGHFLASH(decode,inbound[1]):0x0;
+    uint16_t packet=(v1<<6) | (v2 & 0x3f);
     // packet is 12 bits TTTTDDDDDDDD
     auto type=packet>>8;   
     auto data= packet & 0xFF;
@@ -158,17 +171,34 @@ int16_t Railcom::getChannel1Loco(uint8_t * inbound) {
         packetsWithNoData=0;
         }
     else if (type==RMOB_EXT) {
-        return -1; /* ignore*/
+        return; /* ignore*/
         }
     else {
         if (packetsWithNoData>MAX_WAIT_FOR_GLITCH) {
+            // treat as no loco
             haveHigh=false;
             haveLow=false;
-            return 0; // treat as no loco
+            // Previous loco (if any) is exiting block  
+            blockEvent(false);
+            locoOnTrack=0;
+            return ; 
         }
         packetsWithNoData++;
-        return -1; // need more data          
+        return; // need more data          
     }    
-    if (haveHigh && haveLow) return ((holdoverHigh<<8)| holdoverLow);
-    return -1; // call again, need next packet 
+    if (haveHigh && haveLow) {
+        uint16_t thisLoco=((holdoverHigh<<8)| holdoverLow);
+        if (locoOnTrack!=thisLoco) {
+            // Previous loco (if any) is exiting block  
+            blockEvent(false);
+            locoOnTrack=thisLoco;
+            blockEvent(true); 
+        }
+    }
+}
+
+void Railcom::blockEvent(bool entering) {
+    #ifdef EXRAIL_ACTIVE
+    if (locoOnTrack) RMFT3::blockEvent(vpin,locoOnTrack,entering);
+    #endif
 }

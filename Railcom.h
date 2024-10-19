@@ -24,19 +24,22 @@
 
 class Railcom {
   public:
-    Railcom();
+    Railcom(uint16_t vpin);
 
     /* returns -1: Call again next packet
                 0: No loco on track
                >0: loco id
     */
-    int16_t getChannel1Loco(uint8_t * inbound);
-
+  void process(uint8_t * inbound,uint8_t length);
+  
   private:
+  void blockEvent(bool entering);
+  uint16_t locoOnTrack;
+  uint16_t vpin;
  uint8_t holdoverHigh,holdoverLow;
  bool haveHigh,haveLow; 
  uint8_t packetsWithNoData;  
- static const byte MAX_WAIT_FOR_GLITCH=10; // number of dead or empty packets before assuming loco=0 
+ static const byte MAX_WAIT_FOR_GLITCH=20; // number of dead or empty packets before assuming loco=0 
 };
 
 #endif
