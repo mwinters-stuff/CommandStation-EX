@@ -34,6 +34,7 @@ class Railcom {
   
   private:
   void blockEvent(bool entering);
+  void noData();
   uint16_t locoOnTrack;
   uint16_t vpin;
  uint8_t holdoverHigh,holdoverLow;

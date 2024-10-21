@@ -58,7 +58,7 @@ class I2CRailcom : public IODevice {
 private: 
   // SC16IS752 defines
   uint8_t _UART_CH=0x00; // channel 0 or 1 flips each loop if npins>1
-  byte _inbuf[65];
+  byte _inbuf[12];
   byte _outbuf[2];
   byte cutoutCounter[2]; 
   Railcom * _channelMonitors[2]; 
@@ -118,7 +118,7 @@ public:
     // Read incoming raw Railcom data, and process accordingly
 
     auto inlength = UART_ReadRegister(REG_RXLV);
-    if (inlength==0) return; 
+    
     if (inlength> sizeof(_inbuf)) inlength=sizeof(_inbuf); 
     _inbuf[0]=0;
     if (inlength>0) {

@@ -127,10 +127,11 @@ volatile bool DCCWaveform::railcomActive=false;     // switched on by user
 volatile bool DCCWaveform::railcomDebug=false;     // switched on by user
 volatile bool DCCWaveform::railcomSampleWindow=false; // true during packet transmit
 volatile byte DCCWaveform::railcomCutoutCounter=0;    // cyclic cutout
+volatile byte DCCWaveform::railcomLastAddressHigh=0;
+volatile byte DCCWaveform::railcomLastAddressLow=0;
 
 bool DCCWaveform::setRailcom(bool on, bool debug) {
   if (on && railcomPossible) {
-    // TODO check possible
     railcomActive=true;
     railcomDebug=debug;
   }
@@ -233,6 +234,12 @@ void DCCWaveform::promotePendingPacket() {
         return;
       }
 
+    // Remember address bytes of last sent packet so that Railcom can
+    // work out where the channel2 data came from.
+    railcomLastAddressHigh=transmitPacket[0];
+    railcomLastAddressLow =transmitPacket[1];
+  
+    
     if (packetPending) {
         // Copy pending packet to transmit packet
         // a fixed length memcpy is faster than a variable length loop for these small lengths

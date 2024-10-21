@@ -100,6 +100,14 @@ class DCCWaveform {
       railcomPossible=yes;
       if (!yes) setRailcom(false,false);
     };
+    inline static uint16_t getRailcomLastLocoAddress() {
+      // first 2 bits 00=short loco, 11=long loco , 01/10 = accessory
+      byte addressType=railcomLastAddressHigh & 0xC0;
+      if (addressType==0xC0) return ((railcomLastAddressHigh & 0x3f)<<8) | railcomLastAddressLow;
+      if (addressType==0x00) return railcomLastAddressHigh & 0x3F;
+      return 0; 
+    }
+
   private:
 #ifndef ARDUINO_ARCH_ESP32
     volatile bool packetPending;
@@ -129,6 +137,7 @@ class DCCWaveform {
     static volatile bool railcomDebug;     // switched on by user
     static volatile bool railcomSampleWindow; // when safe to sample
     static volatile byte railcomCutoutCounter; // incremented for each cutout
+    static volatile byte railcomLastAddressHigh,railcomLastAddressLow;
     static bool cutoutNextTime;   // railcom
 #ifdef ARDUINO_ARCH_ESP32
   static RMTChannel *rmtMainChannel;

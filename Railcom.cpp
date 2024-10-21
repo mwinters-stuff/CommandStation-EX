@@ -54,7 +54,7 @@
 #include "EXRAIL3.h"
 #include "DIAG.h"
 
-//#define DIAG_I2CRailcom_data
+#define DIAG_I2CRailcom_data
 
 
   /** Table for 8-to-6 decoding of railcom data. This table can be indexed by the
@@ -135,6 +135,10 @@ const uint8_t HIGHFLASH decode[256] =
         RMOB_LOGON_ENABLE_FEEDBACK = 15,
 };
 
+// each railcom block is represented by an instance of this class.
+// The blockvpin is the vpin associated with this block for the purposes of 
+// a HAL driver for the railcom detection and the EXRAIL ONBLOCKENTER/ONBLOCKEXIT
+
 Railcom::Railcom(uint16_t blockvpin) {
     haveHigh=false;
     haveLow=false;
@@ -143,23 +147,33 @@ Railcom::Railcom(uint16_t blockvpin) {
     vpin=blockvpin;
 }
 
-    /* returns -1: Call again next packet
-                0: No loco on track
-               >0: loco id
-    */
 void Railcom::process(uint8_t * inbound, uint8_t length) {
+    
+    
     #ifdef DIAG_I2CRailcom_data
-      DIAG(F("Railcom %d RX FIFO Data, %d"), vpin,length);
-      for (int i = 0; i < 2; i++){
-        if (inbound[i]) DIAG(F("[0x%x]: 0x%x"), i, inbound[i]);  
-      }
+    static const char hexchars[]="0123456789ABCDEF";
+    if (length>2) {  
+        Serial.print("R ");
+        for (byte i=0;i<length;i++) {
+          if (i==2) Serial.write(' ');
+          Serial.write(hexchars[inbound[i]>>4]);
+          Serial.write(hexchars[inbound[i]& 0x0F ]);
+        }
+        Serial.println();
+    }
+    
     #endif
+    if (length<2 || (inbound[0]==0 && inbound[1]==0)) {
+        noData();
+        return;
+    }
+
     auto v1=GETHIGHFLASH(decode,inbound[0]);
-    auto v2=(length>2) ? GETHIGHFLASH(decode,inbound[1]):0x0;
+    auto v2=(length>1) ? GETHIGHFLASH(decode,inbound[1]):INV;
     uint16_t packet=(v1<<6) | (v2 & 0x3f);
     // packet is 12 bits TTTTDDDDDDDD
-    auto type=packet>>8;   
-    auto data= packet & 0xFF;
+    byte type=(packet>>8) & 0x0F;   
+    byte data= packet & 0xFF;
     if (type==RMOB_ADRHIGH) {
         holdoverHigh=data;
         haveHigh=true;
@@ -174,16 +188,7 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
         return; /* ignore*/
         }
     else {
-        if (packetsWithNoData>MAX_WAIT_FOR_GLITCH) {
-            // treat as no loco
-            haveHigh=false;
-            haveLow=false;
-            // Previous loco (if any) is exiting block  
-            blockEvent(false);
-            locoOnTrack=0;
-            return ; 
-        }
-        packetsWithNoData++;
+        noData();
         return; // need more data          
     }    
     if (haveHigh && haveLow) {
@@ -201,4 +206,17 @@ void Railcom::blockEvent(bool entering) {
     #ifdef EXRAIL_ACTIVE
     if (locoOnTrack) RMFT3::blockEvent(vpin,locoOnTrack,entering);
     #endif
+}
+
+void Railcom::noData() {
+    if (packetsWithNoData>MAX_WAIT_FOR_GLITCH) return; 
+    if (packetsWithNoData==MAX_WAIT_FOR_GLITCH) {
+            // treat as no loco
+            haveHigh=false;
+            haveLow=false;
+            // Previous loco (if any) is exiting block  
+            blockEvent(false);
+            locoOnTrack=0;
+        }
+        packetsWithNoData++;
 }
