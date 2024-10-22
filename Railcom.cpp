@@ -187,15 +187,13 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
         haveLow=true;
         packetsWithNoData=0;
         }
-    else if (type==RMOB_EXT) {
-        return; /* ignore*/
-        }
-    else {
-        // channel1 is unreadable so maybe multiple locos in block
+     else {
+        // channel1 is unreadable or not loco address so maybe multiple locos in block
         if (length>2 && GETHIGHFLASH(decode,inbound[0])!=INV) {
             // it looks like we have channel2 data
             auto thisLoco=DCCWaveform::getRailcomLastLocoAddress();
             if (Diag::RAILCOM) DIAG(F("c2=%d"),thisLoco);
+            if (thisLoco==lastChannel1Loco) return; 
             if (thisLoco) DCC::setLocoInBlock(thisLoco,vpin,false); // this loco is in block, but not exclusive 
             return;
         }
@@ -204,9 +202,10 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
         return;           
     }    
     if (haveHigh && haveLow) {
-        uint16_t thisLoco=((holdoverHigh<<8)| holdoverLow);
+        uint16_t thisLoco=((holdoverHigh<<8)| holdoverLow) & 0x7FFF; // drop top bit
         if (thisLoco!=lastChannel1Loco) {
             // the exclusive DCC call is quite expensive, we dont want to call it every packet
+            if (Diag::RAILCOM) DIAG(F("h=%x l=%xc1=%d"),holdoverHigh, holdoverLow,thisLoco);
             DCC::setLocoInBlock(thisLoco,vpin,true); // only this loco is in block
             lastChannel1Loco=thisLoco; 
         }
