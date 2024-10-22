@@ -234,11 +234,12 @@ void DCCWaveform::promotePendingPacket() {
         return;
       }
 
-    // Remember address bytes of last sent packet so that Railcom can
-    // work out where the channel2 data came from.
-    railcomLastAddressHigh=transmitPacket[0];
-    railcomLastAddressLow =transmitPacket[1];
-  
+    if (isMainTrack) {
+      // Remember address bytes of last sent packet so that Railcom can
+      // work out where the channel2 data came from.
+      railcomLastAddressHigh=transmitPacket[0];
+      railcomLastAddressLow =transmitPacket[1];
+    }
     
     if (packetPending) {
         // Copy pending packet to transmit packet

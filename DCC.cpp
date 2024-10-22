@@ -940,8 +940,9 @@ void DCC::displayCabList(Print * stream) {
     for (int reg = 0; reg <= highestUsedReg; reg++) {
        if (speedTable[reg].loco>0) {
         used ++;
-        StringFormatter::send(stream,F("cab=%d, speed=%d, dir=%c \n"),
-           speedTable[reg].loco,  speedTable[reg].speedCode & 0x7f,(speedTable[reg].speedCode & 0x80) ? 'F':'R');
+        StringFormatter::send(stream,F("cab=%d, speed=%d, dir=%c blk=%d\n"),
+           speedTable[reg].loco,  speedTable[reg].speedCode & 0x7f,(speedTable[reg].speedCode & 0x80) ? 'F':'R',
+           speedTable[reg].blockOccupied);
        }
      }
      StringFormatter::send(stream,F("Used=%d, max=%d\n"),used,MAX_LOCOS);
