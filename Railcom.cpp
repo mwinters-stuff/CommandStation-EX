@@ -51,10 +51,9 @@
 #include "Railcom.h"
 #include "defines.h"
 #include "FSH.h"
-#include "EXRAIL3.h"
+#include "DCC.h"
 #include "DIAG.h"
 
-#define DIAG_I2CRailcom_data
 
 
   /** Table for 8-to-6 decoding of railcom data. This table can be indexed by the
@@ -143,30 +142,34 @@ Railcom::Railcom(uint16_t blockvpin) {
     haveHigh=false;
     haveLow=false;
     packetsWithNoData=0;
-    locoOnTrack=0;
+    lastChannel1Loco=0;
     vpin=blockvpin;
 }
 
+
+// Process is called by a raw data collector. 
 void Railcom::process(uint8_t * inbound, uint8_t length) {
     
-    
-    #ifdef DIAG_I2CRailcom_data
-    static const char hexchars[]="0123456789ABCDEF";
-    if (length>2) {  
-        Serial.print("R ");
-        for (byte i=0;i<length;i++) {
-          if (i==2) Serial.write(' ');
-          Serial.write(hexchars[inbound[i]>>4]);
-          Serial.write(hexchars[inbound[i]& 0x0F ]);
-        }
-        Serial.println();
-    }
-    
-    #endif
+   
     if (length<2 || (inbound[0]==0 && inbound[1]==0)) {
         noData();
         return;
     }
+
+    
+    if (Diag::RAILCOM) {
+      static const char hexchars[]="0123456789ABCDEF";
+      if (length>2) {  
+        USB_SERIAL.print(F("<*R "));
+        for (byte i=0;i<length;i++) {
+          if (i==2) Serial.write(' ');
+          USB_SERIAL.write(hexchars[inbound[i]>>4]);
+          USB_SERIAL.write(hexchars[inbound[i]& 0x0F ]);
+        }
+        USB_SERIAL.print(F(" *>\n"));
+      }
+    }
+
 
     auto v1=GETHIGHFLASH(decode,inbound[0]);
     auto v2=(length>1) ? GETHIGHFLASH(decode,inbound[1]):INV;
@@ -188,25 +191,28 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
         return; /* ignore*/
         }
     else {
+        // channel1 is unreadable so maybe multiple locos in block
+        if (length>2 && GETHIGHFLASH(decode,inbound[0])!=INV) {
+            // it looks like we have channel2 data
+            auto thisLoco=DCCWaveform::getRailcomLastLocoAddress();
+            if (Diag::RAILCOM) DIAG(F("c2=%d"),thisLoco);
+            if (thisLoco) DCC::setLocoInBlock(thisLoco,vpin,false); // this loco is in block, but not exclusive 
+            return;
+        }
+        // channel1 no good and no channel2 
         noData();
-        return; // need more data          
+        return;           
     }    
     if (haveHigh && haveLow) {
         uint16_t thisLoco=((holdoverHigh<<8)| holdoverLow);
-        if (locoOnTrack!=thisLoco) {
-            // Previous loco (if any) is exiting block  
-            blockEvent(false);
-            locoOnTrack=thisLoco;
-            blockEvent(true); 
+        if (thisLoco!=lastChannel1Loco) {
+            // the exclusive DCC call is quite expensive, we dont want to call it every packet
+            DCC::setLocoInBlock(thisLoco,vpin,true); // only this loco is in block
+            lastChannel1Loco=thisLoco; 
         }
     }
 }
 
-void Railcom::blockEvent(bool entering) {
-    #ifdef EXRAIL_ACTIVE
-    if (locoOnTrack) RMFT3::blockEvent(vpin,locoOnTrack,entering);
-    #endif
-}
 
 void Railcom::noData() {
     if (packetsWithNoData>MAX_WAIT_FOR_GLITCH) return; 
@@ -214,9 +220,9 @@ void Railcom::noData() {
             // treat as no loco
             haveHigh=false;
             haveLow=false;
-            // Previous loco (if any) is exiting block  
-            blockEvent(false);
-            locoOnTrack=0;
+            lastChannel1Loco=0;
+            // Previous locos (if any) is exiting block  
+            DCC::clearBlock(vpin);
         }
         packetsWithNoData++;
 }

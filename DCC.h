@@ -102,12 +102,14 @@ public:
     byte speedCode;
     byte groupFlags;
     uint32_t functions;
+    uint16_t blockOccupied; // railcom detected block 
   };
  static LOCO speedTable[MAX_LOCOS];
  static int lookupSpeedTable(int locoId, bool autoCreate=true);
  static byte cv1(byte opcode, int cv);
  static byte cv2(int cv);
- 
+ static void setLocoInBlock(int locoid, uint16_t blockid, bool exclusive);
+ static void clearBlock(uint16_t blockid);
 private:
   static byte loopStatus;
   static void setThrottle2(uint16_t cab, uint8_t speedCode);

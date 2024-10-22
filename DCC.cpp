@@ -897,6 +897,42 @@ DCC::LOCO DCC::speedTable[MAX_LOCOS];
 int DCC::lastLocoReminder = 0;
 int DCC::highestUsedReg = 0;
 
+void DCC::setLocoInBlock(int loco, uint16_t blockid, bool exclusive) {
+  // update block loco is in, tell exrail leaving old block, and entering new.
+
+  // NOTE: The loco table scanning is really inefficient and needs rewriting
+  //   This was done once in the momentum poc.  
+  #ifdef EXRAIL_ACTIVE
+  int reg=lookupSpeedTable(loco,true);
+  if (reg<0) return;
+  auto oldBlock=speedTable[reg].blockOccupied; 
+  if (oldBlock==blockid) return; 
+  if (oldBlock) RMFT2::blockEvent(oldBlock,loco,false);
+  speedTable[reg].blockOccupied=blockid;
+  if (blockid) RMFT2::blockEvent(blockid,loco,true);
+
+  if (exclusive) {
+    for (int reg = 0; reg <= highestUsedReg; reg++) {
+       if (speedTable[reg].loco!=loco &&  speedTable[reg].blockOccupied==blockid) {
+        RMFT2::blockEvent(blockid,speedTable[reg].loco,false);
+        speedTable[reg].blockOccupied=0;
+      }
+  }
+  }
+  #endif 
+}
+
+void DCC::clearBlock(uint16_t blockid) {
+  // Railcom reports block empty... tell Exrail about all leavers 
+  #ifdef EXRAIL_ACTIVE
+  for (int reg = 0; reg <= highestUsedReg; reg++) {
+       if (speedTable[reg].blockOccupied==blockid) {
+        RMFT2::blockEvent(blockid,speedTable[reg].loco,false);
+        speedTable[reg].blockOccupied=0;
+      }
+  }
+  #endif 
+}
 
 void DCC::displayCabList(Print * stream) {
 

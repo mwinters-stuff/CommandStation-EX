@@ -33,13 +33,12 @@ class Railcom {
   void process(uint8_t * inbound,uint8_t length);
   
   private:
-  void blockEvent(bool entering);
   void noData();
-  uint16_t locoOnTrack;
   uint16_t vpin;
  uint8_t holdoverHigh,holdoverLow;
  bool haveHigh,haveLow; 
- uint8_t packetsWithNoData;  
+ uint8_t packetsWithNoData; 
+ uint16_t lastChannel1Loco; 
  static const byte MAX_WAIT_FOR_GLITCH=20; // number of dead or empty packets before assuming loco=0 
 };
 
