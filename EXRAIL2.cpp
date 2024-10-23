@@ -1364,11 +1364,11 @@ void RMFT2::killBlinkOnVpin(VPIN pin, uint16_t count) {
   }
 }
   
-void RMFT2::startNonRecursiveTask(const FSH* reason, int16_t id,int pc, int16_t loco) {  
+void RMFT2::startNonRecursiveTask(const FSH* reason, int16_t id,int pc, uint16_t loco) {  
   // Check we dont already have a task running this handler
   RMFT2 * task=loopTask;
   while(task) {
-    if (task->onEventStartPosition==pc) {
+    if (task->onEventStartPosition==pc && task->loco==loco) {
       DIAG(F("Recursive ON%S(%d)"),reason, id);
       return;
     }

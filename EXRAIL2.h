@@ -202,7 +202,7 @@ class LookList {
   static const FSH *  getRosterFunctions(int16_t id);
   static const FSH *  getTurntableDescription(int16_t id);
   static const FSH *  getTurntablePositionDescription(int16_t turntableId, uint8_t positionId);
-  static void startNonRecursiveTask(const FSH* reason, int16_t id,int pc, int16_t loco=0);
+  static void startNonRecursiveTask(const FSH* reason, int16_t id,int pc, uint16_t loco=0);
   static bool readSensor(uint16_t sensorId);
   static bool isSignal(int16_t id,char rag);
   static SIGNAL_DEFINITION getSignalSlot(int16_t slotno); 
