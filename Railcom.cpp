@@ -145,6 +145,10 @@ Railcom::Railcom(uint16_t blockvpin) {
     lastChannel1Loco=0;
     vpin=blockvpin;
 }
+uint16_t Railcom::expectLoco=0;
+uint16_t Railcom::expectCV=0;
+uint16_t Railcom::expectWait=0;
+ACK_CALLBACK Railcom::expectCallback=0;
 
 
 // Process is called by a raw data collector. 
@@ -170,6 +174,30 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
       }
     }
 
+    if (expectCV && DCCWaveform::getRailcomLastLocoAddress()==expectLoco) {
+        if (length>=4) {
+            auto v2=GETHIGHFLASH(decode,inbound[2]);
+            auto v3=GETHIGHFLASH(decode,inbound[3]);
+            uint16_t packet=(v2<<6) | (v3 & 0x3f);
+            // packet is 12 bits TTTTDDDDDDDD
+            byte type=(packet>>8) & 0x0F;   
+            byte data= packet & 0xFF;
+            if (type==RMOB_POM) {
+                DIAG(F("POM READ loco=%d cv(%d)=%d/0x%x"), expectLoco, expectCV,data,data);
+                expectCallback(data);
+                expectCV=0;
+            }
+        }
+        if (expectCV) { // still waiting 
+            expectWait--;
+            if (expectWait==0) {
+                DIAG(F("POM READ loco=%d cv(%d) FAIL"), expectLoco, expectCV);
+                expectCallback(-1);
+                expectCV=0;
+            }
+        }
+        
+    } 
 
     auto v1=GETHIGHFLASH(decode,inbound[0]);
     auto v2=(length>1) ? GETHIGHFLASH(decode,inbound[1]):INV;

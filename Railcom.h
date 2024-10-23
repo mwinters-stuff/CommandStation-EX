@@ -22,6 +22,8 @@
 #define Railcom_h
 #include "Arduino.h"
 
+typedef void (*ACK_CALLBACK)(int16_t result);
+
 class Railcom {
   public:
     Railcom(uint16_t vpin);
@@ -31,8 +33,16 @@ class Railcom {
                >0: loco id
     */
   void process(uint8_t * inbound,uint8_t length);
+  static void anticipate(uint16_t loco, uint16_t cv, ACK_CALLBACK callback) { 
+    expectLoco=loco;
+    expectCV=cv;
+    expectWait=10;  // channel3 packets
+    expectCallback=callback;
+    };
   
   private:
+  static uint16_t expectCV,expectLoco,expectWait;
+  static ACK_CALLBACK expectCallback;
   void noData();
   uint16_t vpin;
  uint8_t holdoverHigh,holdoverLow;

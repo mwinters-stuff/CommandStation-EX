@@ -390,6 +390,25 @@ void DCC::writeCVByteMain(int cab, int cv, byte bValue)  {
 }
 
 //
+// readCVByteMain: Read a byte with PoM on main.
+// This requires Railcom active 
+//
+void DCC::readCVByteMain(int cab, int cv, ACK_CALLBACK callback)  {
+  byte b[5];
+  byte nB = 0;
+  if (cab > HIGHEST_SHORT_ADDR)
+    b[nB++] = highByte(cab) | 0xC0;    // convert train number into a two-byte address
+
+  b[nB++] = lowByte(cab);
+  b[nB++] = cv1(READ_BYTE_MAIN, cv); // any CV>1023 will become modulus(1024) due to bit-mask of 0x03
+  b[nB++] = cv2(cv);
+  b[nB++] = 0;
+
+  DCCWaveform::mainTrack.schedulePacket(b, nB, 4);
+  Railcom::anticipate(cab,cv,callback);
+}
+
+//
 // writeCVBitMain: Write a bit of a byte with PoM on main. This writes
 // the 5 byte sized packet to implement this DCC function
 //

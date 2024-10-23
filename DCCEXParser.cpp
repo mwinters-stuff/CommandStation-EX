@@ -480,6 +480,14 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	break;
       DCC::writeCVByteMain(p[0], p[1], p[2]);
       return;
+    
+    case 'r': // READ CV on MAIN <r CAB CV>  Requires Railcom
+      if (params != 2)
+	break;
+      if (!DCCWaveform::isRailcom()) break;
+      if (!stashCallback(stream, p, ringStream)) break;
+      DCC::readCVByteMain(p[0], p[1],callback_r);
+      return;
 
     case 'b': // WRITE CV BIT ON MAIN <b CAB CV BIT VALUE>
       if (params != 4)
@@ -1414,6 +1422,12 @@ void DCCEXParser::callback_Vbyte(int16_t result)
 void DCCEXParser::callback_R(int16_t result)
 {
     StringFormatter::send(getAsyncReplyStream(), F("<r%d|%d|%d %d>\n"), stashP[1], stashP[2], stashP[0], result);
+    commitAsyncReplyStream();
+}
+
+void DCCEXParser::callback_r(int16_t result)
+{
+    StringFormatter::send(getAsyncReplyStream(), F("<r MAIN %d %d %d >\n"), stashP[0], stashP[1], result);
     commitAsyncReplyStream();
 }
 

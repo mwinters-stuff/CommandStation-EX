@@ -64,6 +64,8 @@ public:
   static uint8_t getThrottleFrequency(int cab);
   static bool getThrottleDirection(int cab);
   static void writeCVByteMain(int cab, int cv, byte bValue);
+  static void readCVByteMain(int cab, int cv, ACK_CALLBACK callback);
+  
   static void writeCVBitMain(int cab, int cv, byte bNum, bool bValue);
   static void setFunction(int cab, byte fByte, byte eByte);
   static bool setFn(int cab, int16_t functionNumber, bool on);
@@ -128,6 +130,7 @@ private:
   // NMRA codes #
   static const byte SET_SPEED = 0x3f;
   static const byte WRITE_BYTE_MAIN = 0xEC;
+  static const byte READ_BYTE_MAIN = 0xE4;
   static const byte WRITE_BIT_MAIN = 0xE8;
   static const byte WRITE_BYTE = 0x7C;
   static const byte VERIFY_BYTE = 0x74;
