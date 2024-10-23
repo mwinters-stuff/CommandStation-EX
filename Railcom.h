@@ -36,12 +36,14 @@ class Railcom {
   static void anticipate(uint16_t loco, uint16_t cv, ACK_CALLBACK callback) { 
     expectLoco=loco;
     expectCV=cv;
-    expectWait=10;  // channel3 packets
+    expectWait=millis(); // start of timeout 
     expectCallback=callback;
     };
   
   private:
-  static uint16_t expectCV,expectLoco,expectWait;
+  static const unsigned long POM_READ_TIMEOUT=500; // as per spec
+  static uint16_t expectCV,expectLoco;
+  static unsigned long expectWait;
   static ACK_CALLBACK expectCallback;
   void noData();
   uint16_t vpin;

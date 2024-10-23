@@ -147,7 +147,7 @@ Railcom::Railcom(uint16_t blockvpin) {
 }
 uint16_t Railcom::expectLoco=0;
 uint16_t Railcom::expectCV=0;
-uint16_t Railcom::expectWait=0;
+unsigned long Railcom::expectWait=0;
 ACK_CALLBACK Railcom::expectCallback=0;
 
 
@@ -183,22 +183,20 @@ void Railcom::process(uint8_t * inbound, uint8_t length) {
             byte type=(packet>>8) & 0x0F;   
             byte data= packet & 0xFF;
             if (type==RMOB_POM) {
-                DIAG(F("POM READ loco=%d cv(%d)=%d/0x%x"), expectLoco, expectCV,data,data);
+                // DIAG(F("POM READ loco=%d cv(%d)=%d/0x%x"), expectLoco, expectCV,data,data);
                 expectCallback(data);
-                expectCV=0;
-            }
-        }
-        if (expectCV) { // still waiting 
-            expectWait--;
-            if (expectWait==0) {
-                DIAG(F("POM READ loco=%d cv(%d) FAIL"), expectLoco, expectCV);
-                expectCallback(-1);
                 expectCV=0;
             }
         }
         
     } 
 
+    if (expectCV && (millis()-expectWait)> POM_READ_TIMEOUT) { // still waiting 
+                expectCallback(-1);
+                expectCV=0;
+    }
+
+ 
     auto v1=GETHIGHFLASH(decode,inbound[0]);
     auto v2=(length>1) ? GETHIGHFLASH(decode,inbound[1]):INV;
     uint16_t packet=(v1<<6) | (v2 & 0x3f);
