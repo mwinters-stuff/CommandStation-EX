@@ -20,7 +20,9 @@
  */
 
 /** Sections of this code (the decode table constants) 
- * are taken from openmrn under the following copyright.
+ * are taken from openmrn
+ *  https://github.com/bakerstu/openmrn/blob/master/src/dcc/RailCom.cxx
+ * under the following copyright.
  * 
  * Copyright (c) 2014, Balazs Racz
  * All rights reserved.

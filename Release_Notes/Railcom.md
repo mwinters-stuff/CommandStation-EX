@@ -48,4 +48,20 @@ Making use of Railcom data
       EITHER - The leaving loco enters another railcom block
       OR     - only ONE loco remains in the block just left.
 
+      To further support block management in railcom, two additional serial commands are available
+
+      `<K block loco >` to simulate a loco entering a block, and trigger any ONBLOCKENTER
+      `<k block loco >` to simulate a loco leaving a block, and trigger and ONBLOCKEXIT
+
+
+   Reading CV values on MAIN.
+
+      Railcom allows for the facility to read loco cv values while on the main track. This is considerably faster than PROG track access but depends on the loco being in a Railcom monitored block. 
+
+      To read from prog Track we use `<R cv>` response is `<r value>` 
+
+      To read from main track use `<r loco cv>`
+        response is `<r loco cv value>`  
+
+
 

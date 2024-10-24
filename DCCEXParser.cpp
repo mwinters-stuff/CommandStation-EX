@@ -78,8 +78,8 @@ Once a new OPCODE is decided upon, update this list.
   P, Write DCC packet
   q, Sensor deactivated
   Q, Sensor activated
-  r, Broadcast address read on programming track
-  R, Read CVs
+  r, Read cv on main (Railcom)
+  R, Read CVs response r
   s, Display status
   S, Sensor configuration
   t, Cab/loco update command
@@ -1427,7 +1427,7 @@ void DCCEXParser::callback_R(int16_t result)
 
 void DCCEXParser::callback_r(int16_t result)
 {
-    StringFormatter::send(getAsyncReplyStream(), F("<r MAIN %d %d %d >\n"), stashP[0], stashP[1], result);
+    StringFormatter::send(getAsyncReplyStream(), F("<r %d %d %d >\n"), stashP[0], stashP[1], result);
     commitAsyncReplyStream();
 }
 
