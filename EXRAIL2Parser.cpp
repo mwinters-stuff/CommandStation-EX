@@ -377,4 +377,3 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
     return false;
   }
 }
-
