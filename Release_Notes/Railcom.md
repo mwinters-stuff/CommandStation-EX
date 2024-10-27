@@ -14,11 +14,15 @@ Some CPUs require very specific choice of brake pins etc to match their internal
 - Nucleo ... TBA 
 
 Enabling the Railcom Cutout requires a `<C RAILCOM ON>` command. This can be added to myAutomation using `PARSE("<C RAILCOM ON>")`
+Code to calculate the cutout position and provide synchronization for the sampling is in `DCCWaveform.cpp` (not ESP32)
+and in general a global search for "railcom" will show all code changes that have been made to support this.
+
+Code to actually implement the timing of the cutout is hihjly cpu dependent and can be found in gthe various implementations of `DCCTimer.h`. At this time only `DCCTimerAVR.cpp`has implemented this.  
 
 
 Reading Railcom data:
-  A new HAL handler has been added to process input from a 2-block railcom reader (Refer Henk) which operates as a 2 channel UART accessible over I2C. The reader(s) sit between the CS and the track and collect railcom data from locos during the cutout.
-  After the cutout the HAL driver reads the UARTs over I2C and passes the raw data to the CS logic for analysis.
+  A new HAL handler (`IO_I2CRailcom.h`)has been added to process input from a 2-block railcom reader (Refer Henk) which operates as a 2 channel UART accessible over I2C. The reader(s) sit between the CS and the track and collect railcom data from locos during the cutout.
+  After the cutout the HAL driver reads the UARTs over I2C and passes the raw data to the CS logic (`Railcom.cpp`)for analysis.
 
   Each 2-block reader is described in myAutomation like `HAL(I2CRailcom,10000,2,0x48)`  which will assign 2 channels on i2c address 0x48 with vpin numbers 10000 and 10001. If you only use the first channel in the reader, just asign one pin instead of two.
   (Implementation notes.. potentially other readers are possible with suitable HAL drivers. There are however several touch-points with the code DCC Waveform code which helps the HAL driver to understand when the data is safe to sample, and how to interpret responses when the sender is unknown. )

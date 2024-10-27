@@ -74,12 +74,14 @@ void DCCWaveform::loop() {
 void DCCWaveform::interruptHandler() {
   // call the timer edge sensitive actions for progtrack and maintrack
   // member functions would be cleaner but have more overhead
+  #if defined(HAS_ENOUGH_MEMORY)
   if (cutoutNextTime) {
     cutoutNextTime=false;
     railcomSampleWindow=false; // about to cutout, stop reading railcom data.
     railcomCutoutCounter++;
     DCCTimer::startRailcomTimer(9);
   }
+  #endif
   byte sigMain=signalTransform[mainTrack.state];
   byte sigProg=TrackManager::progTrackSyncMain? sigMain : signalTransform[progTrack.state];
   
@@ -160,6 +162,8 @@ void DCCWaveform::interrupt2() {
     reminderWindowOpen=transmitRepeats==0 && remainingPreambles<10 && remainingPreambles>1;
     if (remainingPreambles==1)
       promotePendingPacket();
+
+#if defined(HAS_ENOUGH_MEMORY)   
     else if (isMainTrack && railcomActive) {
       if (remainingPreambles==(requiredPreambles-1)) {
         // First look if we need to start a railcom cutout on next interrupt
@@ -179,6 +183,7 @@ void DCCWaveform::interrupt2() {
         DCCTimer::ackRailcomTimer();
       }
     }
+#endif    
     // Update free memory diagnostic as we don't have anything else to do this time.
     // Allow for checkAck and its called functions using 22 bytes more.
     else DCCTimer::updateMinimumFreeMemoryISR(22); 

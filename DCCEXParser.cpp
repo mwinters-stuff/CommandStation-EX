@@ -480,7 +480,8 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	break;
       DCC::writeCVByteMain(p[0], p[1], p[2]);
       return;
-    
+
+#ifdef HAS_ENOUGH_MEMORY    
     case 'r': // READ CV on MAIN <r CAB CV>  Requires Railcom
       if (params != 2)
 	break;
@@ -488,6 +489,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
       if (!stashCallback(stream, p, ringStream)) break;
       DCC::readCVByteMain(p[0], p[1],callback_r);
       return;
+#endif      
 
     case 'b': // WRITE CV BIT ON MAIN <b CAB CV BIT VALUE>
       if (params != 4)
@@ -1129,7 +1131,7 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
         DCC::setGlobalSpeedsteps(128);
 	DIAG(F("128 Speedsteps"));
         return true;
-#if defined(HAS_ENOUGH_MEMORY) && !defined(ARDUINO_ARCH_UNO) && !defined(ARDUINO_ARCH_ESP32)
+#if defined(HAS_ENOUGH_MEMORY) 
     case "RAILCOM"_hk:
         {   // <C RAILCOM ON|OFF|DEBUG >
             if (params<2) return false;
@@ -1213,11 +1215,11 @@ bool DCCEXParser::parseD(Print *stream, int16_t params, int16_t p[])
         Diag::CMD = onOff;
         return true;
 
+#ifdef HAS_ENOUGH_MEMORY
     case "RAILCOM"_hk: // <D RAILCOM ON/OFF>
         Diag::RAILCOM = onOff;
         return true;
 
-#ifdef HAS_ENOUGH_MEMORY
     case "WIFI"_hk: // <D WIFI ON/OFF>
         Diag::WIFI = onOff;
         return true;
