@@ -320,7 +320,7 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
     case OPCODE_EXTTTURNTABLE: {
       VPIN id=operand;
       VPIN pin=getOperand(progCounter,1);
-      int home=getOperand(progCounter,3);
+      int home=getOperand(progCounter,2);
       setTurntableHiddenState(EXTTTurntable::create(id,pin));
       Turntable *tto=Turntable::get(id);
       tto->addPosition(0,0,home);
@@ -677,13 +677,14 @@ void RMFT2::loop2() {
     break;
 
   case OPCODE_SET:
-    killBlinkOnVpin(operand);
-    IODevice::write(operand,true);
-    break;
-    
   case OPCODE_RESET:
-    killBlinkOnVpin(operand);
-    IODevice::write(operand,false);
+    { 
+      auto count=getOperand(1);
+      for (uint16_t i=0;i<count;i++) {
+        killBlinkOnVpin(operand+i);
+        IODevice::write(operand+i,opcode==OPCODE_SET);
+      }
+    }
     break;
   
   case OPCODE_BLINK: 

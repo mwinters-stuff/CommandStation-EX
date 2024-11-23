@@ -3,7 +3,11 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.2.86"
+#define VERSION "5.2.90"
+// 5.2.90 - Bugfix: EXRAIL EXTT_TURNTABLE() now has description as optional in line with ocumentation (also fixed DCC_TURNTABLE) 
+// 5.2.89 - EXRAIL SET(vpin[,npins]) RESET(vpin,[,npins]) pin range manipulation 
+// 5.2.88 - Fix bug where EX-Turntable objects return incorrect angle for home with <JP x>
+// 5.2.87 - CamParser and IO_EXSensorCam driver
 // 5.2.86 - IO_TCA8418 driver for keypad matrix input now fully functioning, including being able to use an interrupt pin
 // 5.2.85 - IO_TM1638 driver, SEG7 Exrail macro and _s7 segment pattern generator.
 // 5.2.84 - Fix TrackManager setDCCSignal and setPROGSignal for STM32 shadowing of PORTG/PORTH - this time it really is correct!

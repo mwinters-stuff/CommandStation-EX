@@ -572,6 +572,7 @@ protected:
 #include "IO_NeoPixel.h"
 #include "IO_I2CRailcom.h"
 #include "IO_TM1638.h"
+#include "IO_EXSensorCAM.h"
 
 
 #endif // iodevice_h

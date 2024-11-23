@@ -221,7 +221,7 @@
 #define CONFIGURE_SERVO(vpin,pos1,pos2,profile) 
 #define DCC_SIGNAL(id,add,subaddr)
 #define DCCX_SIGNAL(id,redAspect,amberAspect,greenAspect)
-#define DCC_TURNTABLE(id,home,description)
+#define DCC_TURNTABLE(id,home,description...)
 #define DEACTIVATE(addr,subaddr)
 #define DEACTIVATEL(addr)
 #define DELAY(mindelay)
@@ -235,7 +235,7 @@
 #define ENDTASK
 #define ESTOP 
 #define EXRAIL
-#define EXTT_TURNTABLE(id,vpin,home,description)
+#define EXTT_TURNTABLE(id,vpin,home,description...)
 #define FADE(pin,value,ms)
 #define FOFF(func)
 #define FOLLOW(route) 
@@ -313,7 +313,7 @@
 #define READ_LOCO 
 #define RED(signal_id) 
 #define RESERVE(blockid) 
-#define RESET(pin) 
+#define RESET(pin,count...) 
 #define RESUME 
 #define RETURN 
 #define REV(speed) 
@@ -339,7 +339,7 @@
 #define SERVO2(id,position,duration) 
 #define SERVO_SIGNAL(vpin,redpos,amberpos,greenpos)
 #define SERVO_TURNOUT(id,pin,activeAngle,inactiveAngle,profile,description...) 
-#define SET(pin) 
+#define SET(pin,count...) 
 #define SET_TRACK(track,mode)
 #define SET_POWER(track,onoff)
 #define SETLOCO(loco) 
