@@ -585,6 +585,10 @@ void RMFT2::loop2() {
   case OPCODE_SPEED:
     if (loco) DCC::setThrottle(loco,operand,DCC::getThrottleDirection(loco));
     break;
+  
+  case OPCODE_ESTOPALL:
+    DCC::setThrottle(0,1,1); // all locos speed=1
+    break;
     
   case OPCODE_FORGET:
     if (loco!=0) {

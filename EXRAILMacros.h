@@ -516,6 +516,7 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define ENDIF  OPCODE_ENDIF,0,0,
 #define ENDTASK OPCODE_ENDTASK,0,0,
 #define ESTOP OPCODE_SPEED,V(1), 
+#define ESTOPALL OPCODE_ESTOPALL,0,0, 
 #define EXRAIL
 #ifndef IO_NO_HAL
 #define EXTT_TURNTABLE(id,vpin,home,description...) OPCODE_EXTTTURNTABLE,V(id),OPCODE_PAD,V(vpin),OPCODE_PAD,V(home),

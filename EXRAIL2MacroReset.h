@@ -60,6 +60,7 @@
 #undef ENDIF  
 #undef ENDTASK
 #undef ESTOP
+#undef ESTOPALL
 #undef EXRAIL
 #undef EXTT_TURNTABLE
 #undef FADE
@@ -234,6 +235,7 @@
 #define ENDIF  
 #define ENDTASK
 #define ESTOP 
+#define ESTOPALL
 #define EXRAIL
 #define EXTT_TURNTABLE(id,vpin,home,description...)
 #define FADE(pin,value,ms)

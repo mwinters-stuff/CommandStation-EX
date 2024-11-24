@@ -78,6 +78,7 @@ enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
              OPCODE_ONBUTTON,OPCODE_ONSENSOR,
              OPCODE_NEOPIXEL,
              OPCODE_ONBLOCKENTER,OPCODE_ONBLOCKEXIT,
+             OPCODE_ESTOPALL,
              // OPcodes below this point are skip-nesting IF operations
              // placed here so that they may be skipped as a group
              // see skipIfBlock()
