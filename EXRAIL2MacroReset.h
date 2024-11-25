@@ -197,6 +197,7 @@
 #undef XFOFF
 #undef XFON
 #undef XFTOGGLE
+#undef XPOM
 
 #ifndef RMFT2_UNDEF_ONLY
 #define ACTIVATE(addr,subaddr)
@@ -371,5 +372,6 @@
 #define XFOFF(cab,func)
 #define XFON(cab,func)
 #define XFTOGGLE(cab,func)
+#define XPOM(cab,cv,value)
 
 #endif

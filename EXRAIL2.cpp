@@ -714,6 +714,10 @@ void RMFT2::loop2() {
     if (loco) DCC::writeCVByteMain(loco, operand, getOperand(1));
     break;
 
+  case OPCODE_XPOM:
+    DCC::writeCVByteMain(operand, getOperand(1), getOperand(2));
+    break;
+
   case OPCODE_POWEROFF:
     TrackManager::setPower(POWERMODE::OFF);
     TrackManager::setJoin(false);

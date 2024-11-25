@@ -68,4 +68,8 @@ Making use of Railcom data
         response is `<r loco cv value>`  
 
 
-
+Additional EXRAIL features in Railcom Branch:
+  - ESTAOPALL  stops all locos immediately
+  - XPOM(cab,cv,value) POM write cv to sepcific loco
+     (POM(cv,value) already writes cv to current loco)
+     
