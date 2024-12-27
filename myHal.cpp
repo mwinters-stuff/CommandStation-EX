@@ -98,7 +98,7 @@ void halSetup() {
   //   Number of VPINs=16 (numbered 100-115)
   //   I2C address of module=0x40
 
-  //PCA9685::create(100, 16, 0x40);
+  PCA9685::create(100, 16, 0x40);
 
 
   //=======================================================================
@@ -278,7 +278,7 @@ void halSetup() {
   // Note that the I2C address is defined in the EX-IOExpander code, and 0x65 is the default.
   // The example is for an Arduino Nano.
 
-  EXIOExpander::create(800, 18, 0x65);
+  // EXIOExpander::create(800, 18, 0x65);
 
 
   //=======================================================================
@@ -308,7 +308,7 @@ void halSetup() {
   //   EXFastClock::create(0x55);
 
 
-  PCA9685pwm::create(900, 16, 0x60);
+  // PCA9685pwm::create(900, 16, 0x60);
 }
 
 #endif
