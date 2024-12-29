@@ -84,7 +84,7 @@ The configuration file for DCC-EX Command Station
 // NOTE: Only supported on Arduino Mega
 // Set to false if you not even want it on the Arduino Mega
 //
-#define ENABLE_WIFI true
+#define ENABLE_WIFI false
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -108,16 +108,16 @@ The configuration file for DCC-EX Command Station
 // The AP mode password must be at least 8 characters long.
 //
 // Your SSID may not contain ``"'' (double quote, ASCII 0x22).
-#define WIFI_SSID "WINTERS"
+#define WIFI_SSID ""
 //
 // WIFI_PASSWORD is the network password for your home network or if
 // you want to change the password from default AP mode password
 // to the AP password you want. 
 // Your password may not contain ``"'' (double quote, ASCII 0x22).
-#define WIFI_PASSWORD "tesskatt"
+#define WIFI_PASSWORD ""
 //
 // WIFI_HOSTNAME: You probably don't need to change this
-#define WIFI_HOSTNAME "dccexcontroller"
+#define WIFI_HOSTNAME "dccex"
 //
 // WIFI_CHANNEL: If the line "#define ENABLE_WIFI true" is uncommented, 
 // WiFi will be enabled (Mega only). The default channel is set to "1" whether
@@ -135,7 +135,7 @@ The configuration file for DCC-EX Command Station
 // ENABLE_ETHERNET: Set to true if you have an Arduino Ethernet card (wired). This
 // is not for Wifi. You will then need the Arduino Ethernet library as well
 //
-#define ENABLE_ETHERNET false
+#define ENABLE_ETHERNET true
 
 
 /////////////////////////////////////////////////////////////////////////////////////
