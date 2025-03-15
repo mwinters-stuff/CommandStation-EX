@@ -65,6 +65,9 @@
 #ifdef EXRAIL_WARNING
 #warning You have myAutomation.h but your hardware has not enough memory to do that, so EX-RAIL DISABLED
 #endif
+// compile time check, passwords 1 to 7 chars do not work, so do not try to compile with them at all
+// remember trailing '\0', sizeof("") == 1.
+#define PASSWDCHECK(S) static_assert(sizeof(S) == 1 || sizeof(S) > 8, "Password shorter than 8 chars")
 
 void setup()
 {
@@ -75,6 +78,12 @@ void setup()
   SerialManager::init();
 
   DIAG(F("License GPLv3 fsf.org (c) dcc-ex.com"));
+
+// If user has defined a startup delay, delay here before starting IO
+#if defined(STARTUP_DELAY)
+  DIAG(F("Delaying startup for %dms"), STARTUP_DELAY);
+  delay(STARTUP_DELAY);
+#endif
 
 // Initialise HAL layer before reading EEprom or setting up MotorDrivers 
   IODevice::begin();
@@ -87,7 +96,7 @@ void setup()
 
   DISPLAY_START (
     // This block is still executed for DIAGS if display not in use
-    LCD(0,F("DCC-EX v%S"),F(VERSION));
+    LCD(0,F("DCC-EX v" VERSION));
     LCD(1,F("Lic GPLv3"));
   );
 
@@ -96,10 +105,12 @@ void setup()
   // Start Ethernet if it exists
 #ifndef ARDUINO_ARCH_ESP32
 #if WIFI_ON
+  PASSWDCHECK(WIFI_PASSWORD); // compile time check
   WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
 #endif // WIFI_ON
 #else
   // ESP32 needs wifi on always
+  PASSWDCHECK(WIFI_PASSWORD); // compile time check
   WifiESP::setup(WIFI_SSID, WIFI_PASSWORD, WIFI_HOSTNAME, IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
 #endif // ARDUINO_ARCH_ESP32
 
@@ -130,6 +141,23 @@ void setup()
   CommandDistributor::broadcastPower();
 }
 
+/**************** for future reference
+void looptimer(unsigned long timeout, const FSH* message)
+{
+  static unsigned long lasttimestamp = 0;
+  unsigned long now = micros();
+  if (timeout != 0) {
+    unsigned long diff = now - lasttimestamp;
+    if (diff > timeout) {
+      DIAG(message);
+      DIAG(F("DeltaT=%L"), diff);
+      lasttimestamp = micros();
+      return;
+    }
+  }
+  lasttimestamp = now;
+}
+*********************************************/
 void loop()
 {
   // The main sketch has responsibilities during loop()
@@ -137,14 +165,15 @@ void loop()
   // Responsibility 1: Handle DCC background processes
   //                   (loco reminders and power checks)
   DCC::loop();
-
+ 
   // Responsibility 2: handle any incoming commands on USB connection
   SerialManager::loop();
-
+ 
   // Responsibility 3: Optionally handle any incoming WiFi traffic
 #ifndef ARDUINO_ARCH_ESP32
 #if WIFI_ON
   WifiInterface::loop();
+ 
 #endif //WIFI_ON
 #else  //ARDUINO_ARCH_ESP32
 #ifndef WIFI_TASK_ON_CORE0
