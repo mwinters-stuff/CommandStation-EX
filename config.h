@@ -84,7 +84,7 @@ The configuration file for DCC-EX Command Station
 // NOTE: Only supported on Arduino Mega
 // Set to false if you not even want it on the Arduino Mega
 //
-#define ENABLE_WIFI false
+#define ENABLE_WIFI true
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -135,7 +135,7 @@ The configuration file for DCC-EX Command Station
 // ENABLE_ETHERNET: Set to true if you have an Arduino Ethernet card (wired). This
 // is not for Wifi. You will then need the Arduino Ethernet library as well
 //
-#define ENABLE_ETHERNET true
+#define ENABLE_ETHERNET false
 
 
 /////////////////////////////////////////////////////////////////////////////////////
