@@ -1,0 +1,91 @@
+name: Auto Clang Format Fix PR
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  format-and-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Install clang-format and deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-15 python3-pip
+          sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
+          pip3 install requests
+
+      - name: Download clang-format-diff.py
+        run: |
+          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/15.x/clang/tools/clang-format/clang-format-diff.py
+          chmod +x clang-format-diff.py
+
+      - name: Apply clang-format to changed lines
+        run: |
+          git fetch origin main
+          git diff -U0 origin/main...HEAD > pr.diff
+          python3 clang-format-diff.py -i -p1 -style=file < pr.diff
+
+      - name: Commit and push to new branch (if needed)
+        id: maybe_push
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            export FIX_BRANCH="clang-format-fix/pr-${{ github.event.pull_request.number }}"
+            git config user.name "clang-format-bot"
+            git config user.email "actions@github.com"
+            git checkout -b "$FIX_BRANCH"
+            git commit -am "style: apply clang-format to changed lines in PR #${{ github.event.pull_request.number }}"
+            git push origin "$FIX_BRANCH"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "branch=$FIX_BRANCH" >> "$GITHUB_OUTPUT"
+          else
+            echo "No changes to commit"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and auto-merge PR
+        if: steps.maybe_push.outputs.pushed == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fixBranch = '${{ steps.maybe_push.outputs.branch }}';
+            const originalPR = context.payload.pull_request.number;
+
+            const { data: pr } = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🔧 Clang-Format Fix for PR #${originalPR}`,
+              head: fixBranch,
+              base: context.payload.pull_request.base.ref,
+              body: `This PR auto-applies \`clang-format\` to the changed lines in #${originalPR}.`
+            });
+
+            // Enable auto-merge (requires auto-merge to be enabled in repo settings)
+            await github.graphql(`
+              mutation EnableAutoMerge($prId: ID!) {
+                enablePullRequestAutoMerge(input: {
+                  pullRequestId: $prId,
+                  mergeMethod: SQUASH
+                }) {
+                  pullRequest {
+                    number
+                    autoMergeRequest {
+                      enabledAt
+                    }
+                  }
+                }
+              }
+            `, {
+              prId: pr.node_id
+            });
