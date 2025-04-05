@@ -32,8 +32,8 @@ jobs:
 
       - name: Apply clang-format to changed lines
         run: |
-          git fetch origin main
-          git diff -U0 origin/main...HEAD > pr.diff
+          git fetch origin master
+          git diff -U0 origin/master...HEAD > pr.diff
           python3 clang-format-diff.py -i -p1 -style=file < pr.diff
 
       - name: Commit and push to new branch (if needed)
