@@ -58,7 +58,7 @@ static const byte RMT_CHAN_PER_DCC_CHAN = 2;
 
 // Number of bits resulting out of X bytes of DCC payload data
 // Each byte has one bit extra and at the end we have one EOF marker
-#define DATA_LEN(X) ((X) * 9 + 1)
+#define DATA_LEN(X) ((X)*9 + 1)
 
 #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
 #error wrong IDF version

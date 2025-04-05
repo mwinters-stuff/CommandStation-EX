@@ -392,8 +392,8 @@ void DCCEXParser::parseOne(Print* stream, byte* com, RingStream* ringStream) {
           || (p[activep] > 1) || (p[activep] < 0)  // invalid activate 0|1
       )
         break;
-      // Honour the configuration option (config.h) which allows the <a> command to be reversed
-      // Because of earlier confusion we need to do the same thing under both defines
+        // Honour the configuration option (config.h) which allows the <a> command to be reversed
+        // Because of earlier confusion we need to do the same thing under both defines
 #if defined(DCC_ACCESSORY_COMMAND_REVERSE)
       DCC::setAccessory(address, subaddress, p[activep] == 0, onoff);
 #else
@@ -881,7 +881,7 @@ void DCCEXParser::parseOne(Print* stream, byte* com, RingStream* ringStream) {
 #endif
         default:
           break;
-      }  // switch(p[1])
+      }       // switch(p[1])
       break;  // case J
     }
 

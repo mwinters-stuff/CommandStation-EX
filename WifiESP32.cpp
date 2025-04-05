@@ -164,13 +164,13 @@ bool WifiESP::setup(const char* SSid, const char* password, const char* hostname
   if (wifiUp)
     teardown();
 
-  // #ifdef SERIAL_BT_COMMANDS
-  // return false;
-  // #endif
+    // #ifdef SERIAL_BT_COMMANDS
+    // return false;
+    // #endif
 
-  // tests
-  //  enableCoreWDT(1);
-  //  disableCoreWDT(0);
+    // tests
+    //  enableCoreWDT(1);
+    //  disableCoreWDT(0);
 
 #ifdef WIFI_LED
   // Turn off Wifi LED

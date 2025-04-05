@@ -121,7 +121,8 @@ void Output::activate(uint16_t s) {
 
 Output* Output::get(uint16_t n) {
   Output* tt;
-  for (tt = firstOutput; tt != NULL && tt->data.id != n; tt = tt->nextOutput);
+  for (tt = firstOutput; tt != NULL && tt->data.id != n; tt = tt->nextOutput)
+    ;
   return (tt);
 }
 
@@ -132,7 +133,8 @@ Output* Output::get(uint16_t n) {
 bool Output::remove(uint16_t n) {
   Output *tt, *pp = NULL;
 
-  for (tt = firstOutput; tt != NULL && tt->data.id != n; pp = tt, tt = tt->nextOutput);
+  for (tt = firstOutput; tt != NULL && tt->data.id != n; pp = tt, tt = tt->nextOutput)
+    ;
 
   if (tt == NULL)
     return false;

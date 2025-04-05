@@ -85,7 +85,8 @@ void teensyRead(uint8_t word, uint8_t* mac, uint8_t offset) {
 
   // launch command and wait until complete
   FTFL_FSTAT = FTFL_FSTAT_CCIF;
-  while (!(FTFL_FSTAT & FTFL_FSTAT_CCIF));
+  while (!(FTFL_FSTAT & FTFL_FSTAT_CCIF))
+    ;
 
   *(mac + offset) = FTFL_FCCOB5;      // collect only the top three bytes,
   *(mac + offset + 1) = FTFL_FCCOB6;  // in the right orientation (big endian).

@@ -246,7 +246,7 @@ WifiInboundHandler::INBOUND_STATE WifiInboundHandler::loop2() {
           loopState = ANYTHING;
         break;
     }  // switch
-  }  // available
+  }    // available
   return (loopState == ANYTHING) ? INBOUND_IDLE : INBOUND_BUSY;
 }
 

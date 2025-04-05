@@ -81,7 +81,7 @@ class Servo : IODevice {
     uint16_t numSteps;       // Number of steps in animation, or 0 if none in progress.
     uint8_t currentProfile;  // profile being used for current animation.
     uint16_t duration;       // time (tenths of a second) for animation to complete.
-  };  // 14 bytes per element, i.e. per pin in use
+  };                         // 14 bytes per element, i.e. per pin in use
 
   struct ServoData* _servoData[16];
 

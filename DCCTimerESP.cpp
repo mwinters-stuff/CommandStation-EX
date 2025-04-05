@@ -96,7 +96,7 @@ int DCCTimer::freeMemory() {
 #include <soc/sens_struct.h>
 #undef ADC_INPUT_MAX_VALUE
 #define ADC_INPUT_MAX_VALUE 4095  // 12 bit ADC
-#define pinToADC1Channel(X) (adc1_channel_t)(((X) > 35) ? (X) - 36 : (X) - 28)
+#define pinToADC1Channel(X) (adc1_channel_t)(((X) > 35) ? (X)-36 : (X)-28)
 
 int IRAM_ATTR local_adc1_get_raw(int channel) {
   uint16_t adc_value;

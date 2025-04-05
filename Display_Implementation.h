@@ -57,9 +57,7 @@
   }
 #else
 #define DISPLAY_START(xxx) \
-  {                        \
-    xxx;                   \
-  }
+  { xxx; }
 
 #endif
 #endif  // LCD_Implementation_h

@@ -53,7 +53,8 @@ SerialManager::SerialManager(Stream* myserial) {
 
 void SerialManager::init() {
   USB_SERIAL.begin(115200);
-  while (!USB_SERIAL && millis() < 5000);  // wait max 5s for Serial to start
+  while (!USB_SERIAL && millis() < 5000)
+    ;  // wait max 5s for Serial to start
   new SerialManager(&USB_SERIAL);
 
 #ifdef SERIAL6_COMMANDS

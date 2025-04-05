@@ -454,7 +454,7 @@ const FSH* RMFT2::getRosterFunctions(int16_t id) {
 #undef NEOPIXEL_SIGNAL
 #define NEOPIXEL_SIGNAL(id, redRGB, amberRGB, greenRGB)                                                 \
   {sigtypeNEOPIXEL, id, ((VPIN)((redRGB) >> 8)), ((VPIN)((amberRGB) >> 8)), ((VPIN)((greenRGB) >> 8))}, \
-      {sigtypeContinuation, id, ((VPIN)((redRGB) & 0xff)), ((VPIN)((amberRGB) & 0xFF)), ((VPIN)((greenRGB) & 0xFF))},
+      {sigtypeContinuation, id, ((VPIN)((redRGB)&0xff)), ((VPIN)((amberRGB)&0xFF)), ((VPIN)((greenRGB)&0xFF))},
 #undef VIRTUAL_SIGNAL
 #define VIRTUAL_SIGNAL(id) {sigtypeVIRTUAL, id, 0, 0, 0},
 

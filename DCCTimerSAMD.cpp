@@ -39,12 +39,14 @@ void DCCTimer::begin(INTERRUPT_CALLBACK callback) {
   // Timer setup - setup clock sources first
   REG_GCLK_GENDIV = GCLK_GENDIV_DIV(1) |  // Divide 48MHz by 1
                     GCLK_GENDIV_ID(4);    // Apply to GCLK4
-  while (GCLK->STATUS.bit.SYNCBUSY);      // Wait for synchronization
+  while (GCLK->STATUS.bit.SYNCBUSY)
+    ;  // Wait for synchronization
 
   REG_GCLK_GENCTRL = GCLK_GENCTRL_GENEN |        // Enable GCLK
                      GCLK_GENCTRL_SRC_DFLL48M |  // Set the 48MHz clock source
                      GCLK_GENCTRL_ID(4);         // Select GCLK4
-  while (GCLK->STATUS.bit.SYNCBUSY);             // Wait for synchronization
+  while (GCLK->STATUS.bit.SYNCBUSY)
+    ;  // Wait for synchronization
 
   REG_GCLK_CLKCTRL = GCLK_CLKCTRL_CLKEN |         // Enable generic clock
                      4 << GCLK_CLKCTRL_GEN_Pos |  // Apply to GCLK4
@@ -56,7 +58,8 @@ void DCCTimer::begin(INTERRUPT_CALLBACK callback) {
   // to a good deal more. The TCC waveform output pins are mux'd on the SAMD, and output
   // pins for each TCC are only available on certain pins
   TCC0->WAVE.reg = TCC_WAVE_WAVEGEN_NPWM;  // Select NPWM as waveform
-  while (TCC0->SYNCBUSY.bit.WAVE);         // Wait for sync
+  while (TCC0->SYNCBUSY.bit.WAVE)
+    ;  // Wait for sync
 
   // Set the frequency
   TCC0->CTRLA.reg |= TCC_CTRLA_PRESCALER(TCC_CTRLA_PRESCALER_DIV1_Val);
@@ -190,7 +193,8 @@ int ADCee::init(uint8_t pin) {
   ADC->SWTRIG.bit.START = 1;
 
   // Wait for the conversion to be ready
-  while (ADC->INTFLAG.bit.RESRDY == 0);  // Waiting for conversion to complete
+  while (ADC->INTFLAG.bit.RESRDY == 0)
+    ;  // Waiting for conversion to complete
 
   // Read the value
   value = ADC->RESULT.reg;
@@ -275,8 +279,9 @@ void ADCee::begin() {
   // and we need sub-58uS. This code sets it to a read speed of around 5-6uS, and enables
   // 12-bit mode
   // Reconfigure ADC
-  ADC->CTRLA.bit.ENABLE = 0;              // disable ADC
-  while (ADC->STATUS.bit.SYNCBUSY == 1);  // wait for synchronization
+  ADC->CTRLA.bit.ENABLE = 0;  // disable ADC
+  while (ADC->STATUS.bit.SYNCBUSY == 1)
+    ;  // wait for synchronization
 
   ADC->CTRLB.reg &= 0b1111100011001111;           // mask PRESCALER and RESSEL bits
   ADC->CTRLB.reg |= ADC_CTRLB_PRESCALER_DIV64 |   // divide Clock by 16
@@ -285,7 +290,8 @@ void ADCee::begin() {
                      ADC_AVGCTRL_ADJRES(0x00ul);  // adjusting result by 0
   ADC->SAMPCTRL.reg = 0x00ul;                     // sampling Time Length = 0
   ADC->CTRLA.bit.ENABLE = 1;                      // enable ADC
-  while (ADC->STATUS.bit.SYNCBUSY == 1);          // wait for synchronization
+  while (ADC->STATUS.bit.SYNCBUSY == 1)
+    ;  // wait for synchronization
   interrupts();
 }
 #endif

@@ -65,7 +65,7 @@ HardwareSerial Serial6(PA12, PA11);  // Rx=PA12, Tx=PA11 -- CN10 pins 12 and 14 
 // On the F446RE, Serial3 and Serial5 are easy to use:
 HardwareSerial Serial3(PC11, PC10);  // Rx=PC11, Tx=PC10 -- USART3 - F446RE
 HardwareSerial Serial5(PD2, PC12);   // Rx=PD2, Tx=PC12 -- UART5 - F446RE
-// On the F446RE, Serial4 and Serial6 also use pins we can't readily map while using the Arduino pins
+                                     // On the F446RE, Serial4 and Serial6 also use pins we can't readily map while using the Arduino pins
 #elif defined(ARDUINO_NUCLEO_F412ZG) || defined(ARDUINO_NUCLEO_F413ZH) || defined(ARDUINO_NUCLEO_F446ZE) || defined(ARDUINO_NUCLEO_F429ZI) || \
     defined(ARDUINO_NUCLEO_F439ZI) || defined(ARDUINO_NUCLEO_F4X9ZI)
 // Nucleo-144 boards don't have Serial1 defined by default
@@ -74,7 +74,7 @@ HardwareSerial Serial2(PD6, PD5);   // Rx=PD6, Tx=PD5 -- UART2
 #if !defined(ARDUINO_NUCLEO_F412ZG)  // F412ZG does not have UART5
 HardwareSerial Serial5(PD2, PC12);  // Rx=PD2, Tx=PC12 -- UART5
 #endif
-// Serial3 is defined to use USART3 by default, but is in fact used as the diag console
+                                    // Serial3 is defined to use USART3 by default, but is in fact used as the diag console
 // via the debugger on the Nucleo-144. It is therefore unavailable for other DCC-EX uses like WiFi, DFPlayer, etc.
 #else
 #error STM32 board selected is not yet explicitly supported - so Serial1 peripheral is not defined
@@ -469,10 +469,11 @@ int ADCee::init(uint8_t pin) {
     adc->SMPR1 |= (0b111 << ((adcchan - 10) * 3));  // Channel sampling rate 480 cycles
 
   // Read the inital ADC value for this analog input
-  adc->SQR3 = adcchan;            // 1st conversion in regular sequence
-  adc->CR2 |= ADC_CR2_SWSTART;    //(1 << 30);                     // Start 1st conversion SWSTART
-  while (!(adc->SR & (1 << 1)));  // Wait until conversion is complete
-  value = adc->DR;                // Read value from register
+  adc->SQR3 = adcchan;          // 1st conversion in regular sequence
+  adc->CR2 |= ADC_CR2_SWSTART;  //(1 << 30);                     // Start 1st conversion SWSTART
+  while (!(adc->SR & (1 << 1)))
+    ;               // Wait until conversion is complete
+  value = adc->DR;  // Read value from register
 
   uint8_t id = pin - PNUM_ANALOG_BASE;
   // if (id > 15) { // today we have not enough bits in the mask to support more

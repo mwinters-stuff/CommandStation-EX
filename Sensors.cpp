@@ -252,7 +252,8 @@ void Sensor::setState(int value) {
 
 Sensor* Sensor::get(int n) {
   Sensor* tt;
-  for (tt = firstSensor; tt != NULL && tt->data.snum != n; tt = tt->nextSensor);
+  for (tt = firstSensor; tt != NULL && tt->data.snum != n; tt = tt->nextSensor)
+    ;
   return tt;
 }
 ///////////////////////////////////////////////////////////////////////////////
@@ -260,7 +261,8 @@ Sensor* Sensor::get(int n) {
 bool Sensor::remove(int n) {
   Sensor *tt, *pp = NULL;
 
-  for (tt = firstSensor; tt != NULL && tt->data.snum != n; pp = tt, tt = tt->nextSensor);
+  for (tt = firstSensor; tt != NULL && tt->data.snum != n; pp = tt, tt = tt->nextSensor)
+    ;
 
   if (tt == NULL)
     return false;

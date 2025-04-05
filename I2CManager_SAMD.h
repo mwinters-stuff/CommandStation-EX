@@ -96,13 +96,15 @@ void I2CManagerClass::I2C_init() {
                       GCLK_CLKCTRL_CLKEN;
 
   /* Wait for peripheral clock synchronization */
-  while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY);
+  while (GCLK->STATUS.reg & GCLK_STATUS_SYNCBUSY)
+    ;
 
   // Software reset the SERCOM
   s->I2CM.CTRLA.bit.SWRST = 1;
 
   // Wait both bits Software Reset from CTRLA and SYNCBUSY are equal to 0
-  while (s->I2CM.CTRLA.bit.SWRST || s->I2CM.SYNCBUSY.bit.SWRST);
+  while (s->I2CM.CTRLA.bit.SWRST || s->I2CM.SYNCBUSY.bit.SWRST)
+    ;
 
   // Set master mode and enable SCL Clock Stretch mode (stretch after ACK bit)
   s->I2CM.CTRLA.reg = SERCOM_I2CM_CTRLA_MODE(I2C_MASTER_OPERATION) /* |

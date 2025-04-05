@@ -194,7 +194,8 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password, cons
   if (checkForOK(2000, F("AT version:"), true, false)) {
     char version[] = "0.0.0.0-xxx";
     for (int i = 0; i < 11; i++) {
-      while (!wifiStream->available());
+      while (!wifiStream->available())
+        ;
       version[i] = wifiStream->read();
       StringFormatter::printEscape(version[i]);
     }
@@ -283,7 +284,8 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password, cons
     if (checkForOK(5000, F("+CIFSR:APMAC,\""), true, false)) {
       // Copy 17 byte mac address
       for (int i = 0; i < 17; i++) {
-        while (!wifiStream->available());
+        while (!wifiStream->available())
+          ;
         macAddress[i] = wifiStream->read();
         StringFormatter::printEscape(macAddress[i]);
       }
@@ -343,7 +345,8 @@ wifiSerialState WifiInterface::setup2(const FSH* SSid, const FSH* password, cons
     char ipString[MAX_IP_LENGTH + 1];
     ipString[MAX_IP_LENGTH] = '\0';  // protection against missing " character on end.
     for (byte ipLen = 0; ipLen < MAX_IP_LENGTH; ipLen++) {
-      while (!wifiStream->available());
+      while (!wifiStream->available())
+        ;
       int ipChar = wifiStream->read();
       StringFormatter::printEscape(ipChar);
       if (ipChar == '"') {
