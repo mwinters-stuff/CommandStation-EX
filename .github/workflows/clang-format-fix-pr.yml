@@ -1,0 +1,59 @@
+name: Clang Format PR Suggestions
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  clang-format-suggest:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # full history is needed for diff
+
+      - name: Install clang-format and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-15 python3-pip
+          sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
+          pip3 install requests
+
+      - name: Get clang-format-diff.py
+        run: |
+          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/14.x/clang/tools/clang-format/clang-format-diff.py
+          chmod +x clang-format-diff.py
+
+      - name: Generate clang-format suggestions
+        id: clang_format
+        run: |
+          git fetch origin master
+          git diff -U0 origin/master...HEAD > pr.diff
+          python3 clang-format-diff.py -p1 -style=file < pr.diff > format_suggestions.txt
+          
+          # Store diff line count and contents
+          SUGGESTION_LINES=$(wc -l < format_suggestions.txt)
+          echo "lines=$SUGGESTION_LINES" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR with suggestions
+        if: steps.clang_format.outputs.lines != '0'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ⚠️ **Clang-Format Style Suggestions**
+
+            The following formatting issues were found in the changed lines of your PR:
+
+            ```
+            ${{ steps.clang_format.outputs.lines != '0' && join(fromJSON('[""]'), '') }}
+            $(cat format_suggestions.txt)
+            ```
+
+            Please run `clang-format.sh` on the changed lines or commit these suggestions manually.
