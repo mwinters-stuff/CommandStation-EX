@@ -32,7 +32,14 @@ jobs:
       - name: Generate clang-format suggestions
         id: clang_format
         run: |
+          # Ensure no local changes or untracked files from previous steps
+          git reset --hard
+          git clean -fdx  # Remove untracked files and dirs
+
+          # Fetch master branch for diffing
           git fetch origin master
+
+          # Generate diff and clang-format suggestions
           git diff -U0 origin/master...HEAD > pr.diff
           python3 clang-format-diff.py -p1 -style=file < pr.diff > format_suggestions.txt
           
