@@ -98,26 +98,26 @@ Once a new OPCODE is decided upon, update this list.
   Z, Output configuration/control
 */
 
-#include "StringFormatter.h"
 #include "DCCEXParser.h"
+
+#include "CamParser.h"
+#include "CommandDistributor.h"
 #include "DCC.h"
+#include "DCCTimer.h"
 #include "DCCWaveform.h"
-#include "Turnouts.h"
+#include "DIAG.h"
+#include "EEStore.h"
+#include "EXRAIL2.h"
+#include "GITHUB_SHA.h"
+#include "KeywordHasher.h"
 #include "Outputs.h"
 #include "Sensors.h"
-#include "GITHUB_SHA.h"
-#include "version.h"
-#include "defines.h"
-#include "CommandDistributor.h"
-#include "EEStore.h"
-#include "DIAG.h"
+#include "StringFormatter.h"
 #include "TrackManager.h"
-#include "DCCTimer.h"
-#include "EXRAIL2.h"
+#include "Turnouts.h"
 #include "Turntables.h"
+#include "defines.h"
 #include "version.h"
-#include "KeywordHasher.h"
-#include "CamParser.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include "WifiESP32.h"
 #endif
