@@ -24,46 +24,16 @@ jobs:
           sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
           pip3 install requests
 
-      - name: Generate clang-format suggestions
-        id: clang_format
-        run: |
-          # Ensure no local changes or untracked files from previous steps
-          git reset --hard
-          git clean -fdx  # Remove untracked files and dirs
-
-          # Fetch master branch for diffing
-          git fetch origin master
-
-          echo "Get clang-format-diff.py"
-          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/15.x/clang/tools/clang-format/clang-format-diff.py
-          chmod +x clang-format-diff.py
-
-
-          # Generate diff and clang-format suggestions
-          git diff -U0 origin/master...HEAD > pr.diff
-          python3 clang-format-diff.py -p1 -style=file < pr.diff > format_suggestions.txt
-          
-          # Store diff line count and contents
-          SUGGESTION_LINES=$(wc -l < format_suggestions.txt)
-          echo "lines=$SUGGESTION_LINES" >> "$GITHUB_OUTPUT"
-
-          # Escape special characters and save contents to output
-          SUGGESTIONS=$(cat format_suggestions.txt | sed -e 's/%/%25/g' -e 's/\r/%0D/g' -e 's/\n/%0A/g')
-          echo "suggestions=$SUGGESTIONS" >> "$GITHUB_OUTPUT"
-
-      - name: Comment on PR with suggestions
-        if: steps.clang_format.outputs.lines != '0'
-        uses: peter-evans/create-or-update-comment@v4
+      - name: Download reviewdog
+        uses: reviewdog/action-setup@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ⚠️ **Clang-Format Style Suggestions**
-
-            The following formatting issues were found in the changed lines of your PR:
-
-            ```
-            ${{ steps.clang_format.outputs.suggestions }}
-            ```
-
-            Please run `clang-format.sh` to format the files or commit these suggestions manually.
+          reviewdog_version: latest
+  
+      - name: Run clang-format with reviewdog
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch origin master
+          git diff -U0 origin/master...HEAD > pr.diff
+          clang-format-diff.py -p1 -style=file < pr.diff \
+            | reviewdog -f=diff -name="clang-format" -reporter=github-pr-review -level=info
