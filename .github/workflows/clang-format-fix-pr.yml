@@ -23,6 +23,7 @@ jobs:
           sudo apt-get install -y clang-format-15 python3-pip
           sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
           pip3 install requests
+          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/15.x/clang/tools/clang-format/clang-format-diff.py
 
       - name: Download reviewdog
         uses: reviewdog/action-setup@v1
