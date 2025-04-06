@@ -1,91 +1,72 @@
-name: Auto Clang Format Fix PR
+name: Clang Format PR Suggestions
 
 on:
   pull_request:
     branches: [master]
 
 jobs:
-  format-and-fix:
+  clang-format-suggest:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       pull-requests: write
+      contents: read
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          ref: ${{ github.head_ref }}
+          fetch-depth: 0  # full history is needed for diff
 
-      - name: Install clang-format and deps
+      - name: Install clang-format and dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format-15 python3-pip
           sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
           pip3 install requests
 
-      - name: Download clang-format-diff.py
+      - name: Generate clang-format suggestions
+        id: clang_format
         run: |
+          # Ensure no local changes or untracked files from previous steps
+          git reset --hard
+          git clean -fdx  # Remove untracked files and dirs
+
+          # Fetch master branch for diffing
+          git fetch origin master
+
+          echo "Get clang-format-diff.py"
           curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/15.x/clang/tools/clang-format/clang-format-diff.py
           chmod +x clang-format-diff.py
 
-      - name: Apply clang-format to changed lines
-        run: |
-          git fetch origin master
+
+          # Generate diff and clang-format suggestions
           git diff -U0 origin/master...HEAD > pr.diff
-          python3 clang-format-diff.py -i -p1 -style=file < pr.diff
+          python3 clang-format-diff.py -p1 -style=file < pr.diff > format_suggestions.txt
+          
+          # Store diff line count and contents
+          SUGGESTION_LINES=$(wc -l < format_suggestions.txt)
+          echo "lines=$SUGGESTION_LINES" >> "$GITHUB_OUTPUT"
 
-      - name: Commit and push to new branch (if needed)
-        id: maybe_push
-        run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            export FIX_BRANCH="clang-format-fix/pr-${{ github.event.pull_request.number }}"
-            git config user.name "clang-format-bot"
-            git config user.email "actions@github.com"
-            git checkout -b "$FIX_BRANCH"
-            git commit -am "style: apply clang-format to changed lines in PR #${{ github.event.pull_request.number }}"
-            git push origin "$FIX_BRANCH"
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-            echo "branch=$FIX_BRANCH" >> "$GITHUB_OUTPUT"
-          else
-            echo "No changes to commit"
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Escape multiline output properly using heredoc
+          {
+            echo 'suggestions<<EOF'
+            cat format_suggestions.txt
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Create and auto-merge PR
-        if: steps.maybe_push.outputs.pushed == 'true'
-        uses: actions/github-script@v7
+      - name: Comment on PR with suggestions
+        if: steps.clang_format.outputs.lines != '0'
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fixBranch = '${{ steps.maybe_push.outputs.branch }}';
-            const originalPR = context.payload.pull_request.number;
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ⚠️ **Clang-Format Style Suggestions**
 
-            const { data: pr } = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `🔧 Clang-Format Fix for PR #${originalPR}`,
-              head: fixBranch,
-              base: context.payload.pull_request.base.ref,
-              body: `This PR auto-applies \`clang-format\` to the changed lines in #${originalPR}.`
-            });
+            The following formatting issues were found in the changed lines of your PR:
 
-            // Enable auto-merge (requires auto-merge to be enabled in repo settings)
-            await github.graphql(`
-              mutation EnableAutoMerge($prId: ID!) {
-                enablePullRequestAutoMerge(input: {
-                  pullRequestId: $prId,
-                  mergeMethod: SQUASH
-                }) {
-                  pullRequest {
-                    number
-                    autoMergeRequest {
-                      enabledAt
-                    }
-                  }
-                }
-              }
-            `, {
-              prId: pr.node_id
-            });
+            ```
+            ${{ steps.clang_format.outputs.suggestions }}
+            ```
+
+            Please run `clang-format.sh` to format the files or commit these suggestions manually.
