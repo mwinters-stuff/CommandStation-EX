@@ -35,7 +35,7 @@ jobs:
           git fetch origin master
 
           echo "Get clang-format-diff.py"
-          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/14.x/clang/tools/clang-format/clang-format-diff.py
+          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/15.x/clang/tools/clang-format/clang-format-diff.py
           chmod +x clang-format-diff.py
 
 
@@ -66,4 +66,4 @@ jobs:
             ${{ steps.clang_format.outputs.suggestions }}
             ```
 
-            Please run `clang-format.sh` on the changed lines or commit these suggestions manually.
+            Please run `clang-format.sh` to format the files or commit these suggestions manually.
