@@ -24,11 +24,6 @@ jobs:
           sudo ln -sf /usr/bin/clang-format-15 /usr/local/bin/clang-format
           pip3 install requests
 
-      - name: Get clang-format-diff.py
-        run: |
-          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/14.x/clang/tools/clang-format/clang-format-diff.py
-          chmod +x clang-format-diff.py
-
       - name: Generate clang-format suggestions
         id: clang_format
         run: |
@@ -38,6 +33,11 @@ jobs:
 
           # Fetch master branch for diffing
           git fetch origin master
+
+          echo "Get clang-format-diff.py"
+          curl -o clang-format-diff.py https://raw.githubusercontent.com/llvm/llvm-project/release/14.x/clang/tools/clang-format/clang-format-diff.py
+          chmod +x clang-format-diff.py
+
 
           # Generate diff and clang-format suggestions
           git diff -U0 origin/master...HEAD > pr.diff
