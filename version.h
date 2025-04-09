@@ -3,11 +3,40 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.4.6"
-// 5.4.6  - Bugfix: Do not drop further commands in same packet
-// 5.4.5  - ESP32: Better detection of correct IDF version
-//        - track power is always turned on after setJoin() not by setJoin()
-// 5.4.4  - bugfix in parser, input buffer overrun and trailing > that did break <+>
+#define VERSION "5.5.18"
+// 5.5.18 - New STASH internals 
+//        - EXRAIL IFSTASH/CLEAR_ANY_STASH
+//        - <JM CLEAR ANY id> to clear any stash with loco id
+//        - See Release_Notes/Stash.md  
+// 5.5.17 - Extensive new compile time checking in exrail scripts (duplicate sequences etc), no function change 
+// 5.5.16 - DOXYGEN comments in EXRAIL2MacroReset.h
+// 5.5.15 - Support for F429ZI/F329ZI
+//        - Own mDNS support for (wired) Ethernet
+// 5.5.14 - DCC Non-blocking packet queue with priority
+// 5.5.13 - Update STM32duino core to v19.0.0. for updated PeripheralPins.c in preparation for F429/439ZI Ethernet support 
+// 5.5.12 - Websocket support (wifi only) 
+// 5.5.11 - (5.4.2) accessory command reverse
+// 5.5.10 - CamParser fix
+// 5.5.9  - (5.4.3) fix changeFn for functions 29..31
+// 5.5.8  - EXSensorCam clean up to match other filters and
+//        - avoid need for config.h settings
+//        - Test: IO_I2CDFPlayer.h inserted 10mS deleay in Init_SC16IS752() just after soft-reset for board with 1.8432 Mhz xtal
+//        - IO_I2CDFPlayer.h: fixed 2 compiler errors as the compilers are getting stricter
+// 5.5.7  - ESP32 bugfix packet buffer race (as 5.4.1)
+// 5.5.6  - Fix ESP32 build bug caused by include reference loop
+// 5.5.5  - Railcom implementation with IO_I2CRailcom driver
+//        - response analysis and block management.
+//        - <r locoid cv>  POM read using Railcom.
+//        - See Release_notes/Railcom.md
+// 5.5.4  - Split ESP32 from DCCWaveform to DCCWaveformRMT
+//        - Railcom Cutout control (DCCTimerAVR Mega only so far) 
+// 5.5.3  - EXRAIL ESTOPALL,XPOM, 
+//        - Bugfix RESERVE to cause ESTOP.(was STOP)
+//        - Correct direction sync after manual throttle change. 
+//        - plus ONBLOCKENTER/EXIT in preparation for Railcom
+// 5.5.2  - DS1307 Real Time clock 
+// 5.5.1  - Momentum 
+// 5.5.0  - New version on devel
 // 5.4.3  - bugfix changeFn for functions 29..31
 // 5.4.2  - Reversed turnout bugfix
 // 5.4.1  - ESP32 bugfix packet buffer race

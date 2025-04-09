@@ -1,6 +1,6 @@
 /*
  *  © 2022 Harald Barth
- *  © 2020-2021 Chris Harlow
+ *  © 2020-2025 Chris Harlow
  *  © 2020 Gregor Baues
  *  © 2022 Colin Murdoch
  * 
@@ -28,6 +28,7 @@
 #include "StringBuffer.h"
 #include "defines.h"
 #include "EXRAIL2.h"
+#include "DCC.h"
 
 #if WIFI_ON | ETHERNET_ON 
   // Command Distributor must handle a RingStream of clients
@@ -36,17 +37,17 @@
 
 class CommandDistributor {
 public:
-  enum clientType: byte {NONE_TYPE,COMMAND_TYPE,WITHROTTLE_TYPE};
+  enum clientType: byte {NONE_TYPE = 0,COMMAND_TYPE,WITHROTTLE_TYPE,WEBSOCK_CONNECTING_TYPE,WEBSOCKET_TYPE}; // independent of other types, NONE_TYPE must be 0
 private:
   static void broadcastToClients(clientType type);
   static StringBuffer * broadcastBufferWriter;
   #ifdef CD_HANDLE_RING
     static RingStream * ring;
-    static clientType clients[8];
+    static clientType clients[MAX_NUM_TCP_CLIENTS];
   #endif
 public :
   static void parse(byte clientId,byte* buffer, RingStream * ring);
-  static void broadcastLoco(byte slot);
+  static void broadcastLoco(DCC::LOCO * slot);
   static void broadcastForgetLoco(int16_t loco);
   static void broadcastSensor(int16_t id, bool value);
   static void broadcastTurnout(int16_t id, bool isClosed);

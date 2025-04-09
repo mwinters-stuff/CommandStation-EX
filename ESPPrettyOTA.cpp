@@ -37,57 +37,88 @@
 #define OTA_PASSWORD_IS_MD5_HASH false
 #endif
 
+// Custom stream to wrap output from PrettyOTA to DIAG
+class CustomDiagStream : public Stream {
+ public:
+  CustomDiagStream() {}
+
+  size_t write(uint8_t c) override {
+    if (!_started) {
+      _started = true;
+    }
+
+    if (c == '\n' || c == '\r') {
+      _started = false;
+      DIAG(buildOutput.c_str());
+      buildOutput = "";
+    } else {
+      buildOutput += (char)c;
+    }
+    return 1;
+  }
+
+  int available() override { return 0; }
+
+  int read() override { return 0; }
+
+  int peek() override { return 0; }
+
+  void flush() override {}
+
+ private:
+  bool _started = false;
+  String buildOutput;
+};
+
 void ESPPrettyOTA::setup() {
   // Print IP address
-  DIAG(F("PrettyOTA can be accessed at: http://%s/update\n"), WiFi.localIP().toString().c_str());
+  DIAG(F("PrettyOTA can be accessed at: http://%s/update"),
+       WiFi.localIP().toString().c_str());
 
   // Initialize PrettyOTA
+  OTAUpdates.SetSerialOutputStream(new CustomDiagStream());
   OTAUpdates.Begin(&webServer);
 
   if (OTA_USERNAME != "" && OTA_PASSWORD != "") {
     OTAUpdates.SetAuthenticationDetails(OTA_USERNAME, OTA_PASSWORD, OTA_PASSWORD_IS_MD5_HASH);
   }
 
-  // Set firmware version to 1.0.0
+  // Set firmware version to VERSION
   OTAUpdates.OverwriteAppVersion(VERSION);
 
   // Set current build time and date
   PRETTY_OTA_SET_CURRENT_BUILD_TIME_AND_DATE();
 
   // set custom callbacks
-  OTAUpdates.OnStart([this](NSPrettyOTA::UPDATE_MODE updateMode) { this->OnOTAStart(updateMode); });
-  OTAUpdates.OnProgress([this](uint32_t currentSize, uint32_t totalSize) { this->OnOTAProgress(currentSize, totalSize); });
-  OTAUpdates.OnEnd([this](bool successful) { this->OnOTAEnd(successful); });
+  OTAUpdates.OnStart([this](NSPrettyOTA::UPDATE_MODE updateMode) {
+    this->OnOTAStart(updateMode);
+  });
+  OTAUpdates.OnProgress([this](uint32_t currentSize, uint32_t totalSize) {
+    this->OnOTAProgress(currentSize, totalSize);
+  });
 
   // Start web server
   webServer.begin();
 }
 
+// we wrap the default output to be compatible with
+// the DIAG output and print much less.
 void ESPPrettyOTA::OnOTAStart(NSPrettyOTA::UPDATE_MODE updateMode) {
-  DIAG(F("OTA update started\n"));
-
+  DIAG(F("OTA update started - stopping DCC-EX"));
   DCC::setThrottle(0, 1, 1);  // taken from ! Stop
-
-  if (updateMode == NSPrettyOTA::UPDATE_MODE::FIRMWARE) {
-    DIAG(F("Mode: Firmware\n"));
-  } else if (updateMode == NSPrettyOTA::UPDATE_MODE::FILESYSTEM) {
-    DIAG(F("Mode: Filesystem\n"));
-  }
 }
 
 // Gets called while update is running
 // currentSize: Number of bytes already processed
 // totalSize: Total size of new firmware in bytes
 void ESPPrettyOTA::OnOTAProgress(uint32_t currentSize, uint32_t totalSize) {
-  DIAG(F("OTA Progress Current: %u bytes, Total: %u bytes\n"), currentSize, totalSize);
-}
+  static float lastPercentage = 0.0f;
+  const float percentage = 100.0f * static_cast<float>(currentSize) / static_cast<float>(totalSize);
+  const uint8_t numBarsToShow = static_cast<uint8_t>(percentage / 3.3333f);
 
-// Gets called when update finishes
-void ESPPrettyOTA::OnOTAEnd(bool successful) {
-  if (successful) {
-    DIAG(F("OTA update finished successfully\n"));
-  } else {
-    DIAG(F("OTA update failed\n"));
+  if (percentage - lastPercentage >= 1.0f) {
+    DIAG(F("OTA Progress: %02u%%"), static_cast<uint8_t>(percentage));
+    lastPercentage = percentage;
   }
 }
 

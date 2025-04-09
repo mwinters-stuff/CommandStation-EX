@@ -1,6 +1,6 @@
 /*
  *  © 2021 Neil McKechnie
- *  © 2020-2022 Chris Harlow
+ *  © 2020-2025 Chris Harlow
  *  © 2022-2023 Colin Murdoch
  *  © 2023 Harald Barth
  *  © 2025 Morten Nielsen
@@ -36,6 +36,7 @@
 // 
 enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
              OPCODE_FWD,OPCODE_REV,OPCODE_SPEED,OPCODE_INVERT_DIRECTION,
+             OPCODE_MOMENTUM,
              OPCODE_RESERVE,OPCODE_FREE,
              OPCODE_AT,OPCODE_AFTER,
              OPCODE_AFTEROVERLOAD,OPCODE_AUTOSTART,
@@ -76,8 +77,11 @@ enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
              OPCODE_ROUTE_ACTIVE,OPCODE_ROUTE_INACTIVE,OPCODE_ROUTE_HIDDEN,
              OPCODE_ROUTE_DISABLED,
              OPCODE_STASH,OPCODE_CLEAR_STASH,OPCODE_CLEAR_ALL_STASH,OPCODE_PICKUP_STASH,
-             OPCODE_ONBUTTON,OPCODE_ONSENSOR,             
+             OPCODE_CLEAR_ANY_STASH,
+             OPCODE_ONBUTTON,OPCODE_ONSENSOR,
              OPCODE_NEOPIXEL,
+             OPCODE_ONBLOCKENTER,OPCODE_ONBLOCKEXIT,
+             OPCODE_ESTOPALL,OPCODE_XPOM,
              // OPcodes below this point are skip-nesting IF operations
              // placed here so that they may be skipped as a group
              // see skipIfBlock()
@@ -90,7 +94,8 @@ enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
              OPCODE_IFCLOSED,OPCODE_IFTHROWN,
              OPCODE_IFRE,
              OPCODE_IFLOCO,
-             OPCODE_IFTTPOSITION
+             OPCODE_IFTTPOSITION,
+             OPCODE_IFSTASH,
              };
 
 // Ensure thrunge_lcd is put last as there may be more than one display, 
@@ -134,9 +139,10 @@ enum SignalType {
   static const byte FEATURE_LCC   = 0x40;
   static const byte FEATURE_ROSTER= 0x20;
   static const byte FEATURE_ROUTESTATE= 0x10;
-  static const byte FEATURE_STASH = 0x08;
+  // spare = 0x08;
   static const byte FEATURE_BLINK = 0x04;
   static const byte FEATURE_SENSOR = 0x02;
+  static const byte FEATURE_BLOCK = 0x01;
   
  
   // Flag bits for status of hardware and TPL
@@ -163,7 +169,7 @@ class LookList {
     int16_t findPosition(int16_t value); // finds index 
     int16_t size();
     void stream(Print * _stream); 
-    void handleEvent(const FSH* reason,int16_t id);
+    void handleEvent(const FSH* reason,int16_t id, int16_t loco=0);
 
   private:
      int16_t m_size;
@@ -177,8 +183,7 @@ class LookList {
    public:
     static void begin();
     static void loop();
-    RMFT2(int progCounter);
-    RMFT2(int route, uint16_t cab);
+    RMFT2(int progCounter, int16_t cab=0);
     ~RMFT2();
     static void readLocoCallback(int16_t cv);
     static void createNewTask(int route, uint16_t cab);
@@ -188,6 +193,7 @@ class LookList {
     static void clockEvent(int16_t clocktime, bool change);
     static void rotateEvent(int16_t id, bool change);
     static void powerEvent(int16_t track, bool overload);
+    static void blockEvent(int16_t block, int16_t loco, bool entering);
     static bool signalAspectEvent(int16_t address, byte aspect );    
     // Throttle Info Access functions built by exrail macros 
   static const byte rosterNameCount;
@@ -201,7 +207,7 @@ class LookList {
   static const FSH *  getRosterFunctions(int16_t id);
   static const FSH *  getTurntableDescription(int16_t id);
   static const FSH *  getTurntablePositionDescription(int16_t turntableId, uint8_t positionId);
-  static void startNonRecursiveTask(const FSH* reason, int16_t id,int pc);
+  static void startNonRecursiveTask(const FSH* reason, int16_t id,int pc, uint16_t loco=0);
   static bool readSensor(uint16_t sensorId);
   static bool isSignal(int16_t id,char rag);
   static SIGNAL_DEFINITION getSignalSlot(int16_t slotno); 
@@ -225,7 +231,6 @@ private:
     static RMFT2 * loopTask;
     static RMFT2 * pausingTask;
     void delayMe(long millisecs);
-    void driveLoco(byte speedo);
     bool skipIfBlock();
     bool readLoco();
     void loop2();
@@ -234,6 +239,8 @@ private:
     void printMessage2(const FSH * msg);
     void thrungeString(uint32_t strfar, thrunger mode, byte id=0);
     uint16_t getOperand(byte n); 
+    void pause();
+    void resume();
     
    static bool diag;
    static const  HIGHFLASH3  byte RouteCode[];
@@ -255,6 +262,9 @@ private:
    static LookList * onRotateLookup;
 #endif
    static LookList * onOverloadLookup;
+   static LookList * onBlockEnterLookup;
+   static LookList * onBlockExitLookup;
+   
    
    static const int countLCCLookup;
    static int onLCCLookup[];
@@ -279,9 +289,8 @@ private:
     byte  taskId;
     BlinkState blinkState; // includes AT_TIMEOUT flag. 
     uint16_t loco;
-    bool forward;
     bool invert;
-    byte speedo;
+    byte pauseSpeed;
     int onEventStartPosition;
     byte stackDepth;
     int callStack[MAX_STACK_DEPTH];

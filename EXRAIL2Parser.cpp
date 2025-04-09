@@ -1,7 +1,7 @@
 /*
  *  © 2021 Neil McKechnie
  *  © 2021-2023 Harald Barth
- *  © 2020-2023 Chris Harlow
+ *  © 2020-2025 Chris Harlow
  *  © 2022-2023 Colin Murdoch
  *  All rights reserved.
  *  
@@ -181,38 +181,19 @@ void RMFT2::ComandFilter(Print * stream, byte & opcode, byte & paramCount, int16
               return;
             }
             break;
-        case "M"_hk:
-            // NOTE: we only need to handle valid calls here because 
-            // DCCEXParser has to have code to handle the <J<> cases where
-            // exrail isnt involved anyway. 
-            // This entire code block is compiled out if STASH macros not used 
-          if (!(compileFeatures & FEATURE_STASH)) return;
-          if (paramCount==1) { // <JM>
-              StringFormatter::send(stream,F("<jM %d>\n"),maxStashId);
-              opcode=0;
-              break;
-            } 
-          if (paramCount==2) {  // <JM id>
-              if (p[1]<=0 || p[1]>maxStashId) break;
-              StringFormatter::send(stream,F("<jM %d %d>\n"),
-                    p[1],stashArray[p[1]]);
-               opcode=0;     
-               break;    
-          } 
-          if (paramCount==3) {  // <JM id cab>
-              if (p[1]<=0 || p[1]>maxStashId) break;
-              stashArray[p[1]]=p[2];
-              opcode=0;
-              break;      
-          }
-          break; 
+        
 
-        default:
-            break;
-        }
+  case 'K': // <K blockid loco>  Block enter
+  case 'k': // <k blockid loco>  Block exit
+        if (paramCount!=2) break;
+        blockEvent(p[0],p[1],opcode=='K');
+        opcode=0;
+        break; 
+  
   default:  // other commands pass through
     break;
   }
+}
 }
 
 bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
@@ -228,11 +209,9 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
 			    );
       }
       else {
-      StringFormatter::send(stream,F("\nID=%d,PC=%d,LOCO=%d%c,SPEED=%d%c"),
+      StringFormatter::send(stream,F("\nID=%d,PC=%d,LOCO=%d %c"),
 			    (int)(task->taskId),task->progCounter,task->loco,
-			    task->invert?'I':' ',
-			    task->speedo,
-			    task->forward?'F':'R'
+			    task->invert?'I':' '
 			    );
       }
       task=task->next;
@@ -261,34 +240,33 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
 			      slot.id);
       } 
     }
-
-    if (compileFeatures & FEATURE_STASH) {
-      for (int i=1;i<=maxStashId;i++) {
-        if (stashArray[i])
-          StringFormatter::send(stream,F("\nSTASH[%d] Loco=%d"),
-              i, stashArray[i]); 
-      } 
-    }
-    
     StringFormatter::send(stream,F(" *>\n"));
     return true;
   }
   switch (p[0]) {
   case "PAUSE"_hk: // </ PAUSE>
     if (paramCount!=1) return false;
-    DCC::setThrottle(0,1,true);  // pause all locos on the track
+    { // pause all tasks 
+      RMFT2 * task=loopTask;
+      while(task) {
+	      task->pause();
+	      task=task->next;
+	      if (task==loopTask) break;
+      }
+    }
+    DCC::estopAll();  // pause all locos on the track
     pausingTask=(RMFT2 *)1; // Impossible task address
     return true;
     
   case "RESUME"_hk: // </ RESUME>
     if (paramCount!=1) return false;
     pausingTask=NULL;
-    {
+    { // resume all tasks
       RMFT2 * task=loopTask;
       while(task) {
-	if (task->loco) task->driveLoco(task->speedo);
-	task=task->next;
-	if (task==loopTask) break;
+	      task->resume();
+	      task=task->next;
+	      if (task==loopTask) break;
       }
     }
     return true;
@@ -301,8 +279,7 @@ bool RMFT2::parseSlash(Print * stream, byte & paramCount, int16_t p[]) {
       uint16_t cab=(paramCount==2)? 0 : p[1];
       int pc=routeLookup->find(route);
       if (pc<0) return false;
-      RMFT2* task=new RMFT2(pc);
-      task->loco=cab;
+      new RMFT2(pc,cab);
     }
     return true;
     
