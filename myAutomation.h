@@ -39,15 +39,15 @@ SERVO_TURNOUT(100, 100, 350, 300, Instant, "Front Right Crossover")
 SERVO_TURNOUT(101, 101, 300, 360, Instant, "Front Right Reverse Loop")
 SERVO_TURNOUT(102, 102, 290, 320, Instant, "Front Right Loop")
 SERVO_TURNOUT(103, 103, 300, 350, Instant, "To Engine Shed")
-SERVO_TURNOUT(104, 104, 300, 350, Instant, "To Yard")
+SERVO_TURNOUT(104, 104, 300, 360, Instant, "To Yard")
 
 SERVO_TURNOUT(120, 120, 375, 300, Instant, "Front Left Crossover")
 SERVO_TURNOUT(121, 121, 360, 300, Instant, "Front Left Loop")
 SERVO_TURNOUT(122, 122, 230, 300, Instant, "Back Left Crossover")
-SERVO_TURNOUT(123, 123, 230, 300, Instant, "Front Left Reverse Loop")
+SERVO_TURNOUT(123, 123, 230, 300, Instant, "Back Left Reverse Loop")
 
 SERVO_TURNOUT(124, 124, 250, 300, Instant, "Goods or Passenger")
-SERVO_TURNOUT(125, 125, 350, 300, Instant, "Passenger Sidings")
+SERVO_TURNOUT(125, 125, 350, 310, Instant, "Passenger Sidings")
 SERVO_TURNOUT(126, 126, 250, 300, Instant, "Goods Shed")
 SERVO_TURNOUT(127, 127, 250, 300, Instant, "Goods Sidings")
 
