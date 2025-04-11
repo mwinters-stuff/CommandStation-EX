@@ -26,6 +26,7 @@
 //#include "IO_EXFastClock.h"  // FastClock driver
 // #include "IO_PCA9555.h"     // 16-bit I/O expander (NXP & Texas Instruments).
 #include "IO_PCA9685pwm.h"     // 16-bit I/O expander (NXP & Texas Instruments).
+#include "IO_PCF8575.h"
 
 //==========================================================================
 // The function halSetup() is invoked from CS if it exists within the build.
@@ -156,7 +157,8 @@ void halSetup() {
   //   Number of VPINs=16 (numbered 200-215)
   //   I2C address of module=0x23
 
-  //PCF8575::create(200, 16, 0x23);
+  PCF8575::create(200, 16, 0x21);
+  PCF8575::create(220, 16, 0x22);
 
 
   // Alternative form using INT pin (see above)

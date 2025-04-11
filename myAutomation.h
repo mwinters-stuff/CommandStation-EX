@@ -35,7 +35,7 @@ ROSTER(6,"DB Schenker Class 08","")
 
 
 // points
-SERVO_TURNOUT(100, 100, 350, 300, Instant, "Front Right Crossover")
+SERVO_TURNOUT(100, 100, 300, 350, Instant, "Front Right Crossover")
 SERVO_TURNOUT(101, 101, 300, 360, Instant, "Front Right Reverse Loop")
 SERVO_TURNOUT(102, 102, 290, 320, Instant, "Front Right Loop")
 SERVO_TURNOUT(103, 103, 300, 350, Instant, "To Engine Shed")
@@ -50,6 +50,11 @@ SERVO_TURNOUT(124, 124, 250, 300, Instant, "Goods or Passenger")
 SERVO_TURNOUT(125, 125, 350, 310, Instant, "Passenger Sidings")
 SERVO_TURNOUT(126, 126, 250, 300, Instant, "Goods Shed")
 SERVO_TURNOUT(127, 127, 250, 300, Instant, "Goods Sidings")
+
+
+// sensors
+JMRI_SENSOR(200, 9)
+JMRI_SENSOR(220, 7)
 
 // /* SEQUENCE(1) is a simple shuttle between 2 sensors      
 //  *  S20 and S21 are sensors on arduino pins 20 and 21 
