@@ -53,6 +53,7 @@ struct DCCEXParser
     static bool parseC(Print * stream, int16_t params, int16_t p[]);
     static bool parseD(Print * stream, int16_t params, int16_t p[]);
     static bool parseJM(Print * stream, int16_t params, int16_t p[]);
+    static bool parseU(Print * stream, int16_t params, int16_t p[]);
 #ifndef IO_NO_HAL
     static bool parseI(Print * stream, int16_t params, int16_t p[]);
 #endif

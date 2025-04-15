@@ -35,6 +35,7 @@
 // searching easier as a parameter can never be confused with an opcode. 
 // 
 enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
+             OPCODE_UNCOUPLE,OPCODE_COUPLE,
              OPCODE_FWD,OPCODE_REV,OPCODE_SPEED,OPCODE_INVERT_DIRECTION,
              OPCODE_MOMENTUM,
              OPCODE_RESERVE,OPCODE_FREE,
@@ -58,6 +59,8 @@ enum OPCODE : byte {OPCODE_THROW,OPCODE_CLOSE,OPCODE_TOGGLE_TURNOUT,
              OPCODE_START,OPCODE_SETLOCO,OPCODE_SETFREQ,OPCODE_SENDLOCO,OPCODE_FORGET,
              OPCODE_PAUSE, OPCODE_RESUME,OPCODE_POWEROFF,OPCODE_POWERON,
              OPCODE_ONCLOSE, OPCODE_ONTHROW, OPCODE_SERVOTURNOUT, OPCODE_PINTURNOUT,
+             OPCODE_SERVOUNCOUPLE, OPCODE_PINUNCOUPLE,
+             OPCODE_ONUNCOUPLE, OPCODE_ONCOUPLE, 
              OPCODE_PRINT,OPCODE_DCCACTIVATE,OPCODE_ASPECT,
              OPCODE_ONACTIVATE,OPCODE_ONDEACTIVATE,
              OPCODE_ROSTER,OPCODE_KILLALL,
@@ -188,6 +191,7 @@ class LookList {
     static void readLocoCallback(int16_t cv);
     static void createNewTask(int route, uint16_t cab);
     static void turnoutEvent(int16_t id, bool closed);  
+    static void uncoupleEvent(int16_t id, bool isUncouple);  
     static void activateEvent(int16_t addr, bool active);
     static void changeEvent(int16_t id, bool change);
     static void clockEvent(int16_t clocktime, bool change);
@@ -203,6 +207,7 @@ class LookList {
   static const FSH *  getRouteDescription(int16_t id);
   static char   getRouteType(int16_t id);
   static const FSH *  getTurnoutDescription(int16_t id);
+  static const FSH *  getUncoupleDescription(int16_t id);
   static const FSH *  getRosterName(int16_t id);
   static const FSH *  getRosterFunctions(int16_t id);
   static const FSH *  getTurntableDescription(int16_t id);
@@ -251,6 +256,8 @@ private:
    static LookList * signalLookup;
    static LookList * onThrowLookup;
    static LookList * onCloseLookup;
+   static LookList * onUnCoupleLookup;
+   static LookList * onCoupleLookup;
    static LookList * onActivateLookup;
    static LookList * onDeactivateLookup;
    static LookList * onRedLookup;

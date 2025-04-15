@@ -185,6 +185,16 @@ void  CommandDistributor::broadcastTurnout(int16_t id, bool isClosed ) {
 #endif
 }
 
+void  CommandDistributor::broadcastUncouple(int16_t id, bool isUncouple ) {
+  // For DCC++ classic compatibility, state reported to JMRI is 1 for thrown and 0 for closed;
+  // The string below contains serial and Withrottle protocols which should
+  // be safe for both types.
+  broadcastReply(COMMAND_TYPE, F("<H %d %d>\n"),id, isUncouple);
+#ifdef CD_HANDLE_RING
+  broadcastReply(WITHROTTLE_TYPE, F("PTA%c%d\n"), isUncouple?'4':'2', id);
+#endif
+}
+
 void CommandDistributor::broadcastTurntable(int16_t id, uint8_t position, bool moving) {
   broadcastReply(COMMAND_TYPE, F("<I %d %d %d>\n"), id, position, moving);
 }
