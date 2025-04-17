@@ -120,6 +120,7 @@ Once a new OPCODE is decided upon, update this list.
 #include "KeywordHasher.h"
 #include "CamParser.h"
 #include "Stash.h"
+#include "Uncouple.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include "WifiESP32.h"
 #endif
@@ -433,6 +434,11 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
      
     case 'T': // TURNOUT  <T ...>
         if (parseT(stream, params, p))
+            return;
+        break;
+
+    case 'U': // UNCOUPLE  <U ...>
+        if (parseU(stream, params, p))
             return;
         break;
 
@@ -1113,6 +1119,74 @@ bool DCCEXParser::parseT(Print *stream, int16_t params, int16_t p[])
       if (params==4) { // legacy <T id n n n> for Servo
         if (!ServoTurnout::create(p[0], (VPIN)p[1], (uint16_t)p[2], (uint16_t)p[3], 1)) return false;
       } else
+        return false;
+
+      StringFormatter::send(stream, F("<O>\n"));
+      return true;
+    }
+}
+
+//===================================
+bool DCCEXParser::parseU(Print *stream, int16_t params, int16_t p[])
+{
+    switch (params)
+    {
+    case 0: // <T>  list uncouple definitions
+        return Uncouple::printAll(stream); // will <X> if none found
+
+    case 1: // <T id>  delete uncouple
+        if (!Uncouple::remove(p[0]))
+            return false;
+        StringFormatter::send(stream, F("<O>\n"));
+        return true;
+
+    case 2: // <T id 0|1|C|U> 
+        {
+          bool state = false;
+          switch (p[1]) {
+            // Uncouple messages use 1=throw, 0=close.
+            case 0:
+            case "C"_hk:
+              state = false;
+              break;
+            case 1:
+            case "U"_hk:
+              state= true;
+              break;
+            case "X"_hk:
+            {
+              Uncouple *tt = Uncouple::get(p[0]);
+              if (tt) {
+                tt->print(stream);
+                return true;
+              }
+              return false;
+            }
+            default: // Invalid parameter
+              return false;
+          }
+          if (!Uncouple::setUncouple(p[0], state)) return false;
+          return true;
+        }
+
+    default: // Anything else is some kind of uncouple create function.
+      if (params == 6 && p[1] == "SERVO"_hk) { // <T id SERVO n n n n>
+        if (!ServoUncouple::create(p[0], (VPIN)p[2], (uint16_t)p[3], (uint16_t)p[4], (uint8_t)p[5]))
+          return false;
+      } else 
+      if (params == 3 && p[1] == "VPIN"_hk) { // <T id VPIN n>
+        if (!VpinUncouple::create(p[0], p[2])) return false;
+      } else 
+      if (params >= 3 && p[1] == "DCC"_hk) {
+        // <T id DCC addr subadd>   0<=addr<=511, 0<=subadd<=3 (like <a> command).<T>
+        if (params==4 && p[2]>=0 && p[2]<512 && p[3]>=0 && p[3]<4) { // <T id DCC n m>
+          if (!DCCUncouple::create(p[0], p[2], p[3])) return false;
+        } else if (params==3 && p[2]>0 && p[2]<=512*4) { // <T id DCC nn>, 1<=nn<=2048
+          // Linearaddress 1 maps onto decoder address 1/0 (not 0/0!).
+          if (!DCCUncouple::create(p[0], (p[2]-1)/4+1, (p[2]-1)%4)) return false;
+        } else
+          return false;
+      } else 
         return false;
 
       StringFormatter::send(stream, F("<O>\n"));

@@ -49,6 +49,7 @@
 #undef CLEAR_ANY_STASH
 #undef CLOSE 
 #undef CONFIGURE_SERVO
+#undef COUPLE
 #undef DCC_SIGNAL
 #undef DCCX_SIGNAL
 #undef DCC_TURNTABLE
@@ -134,10 +135,13 @@
 #undef ONSENSOR
 #undef ONTHROW 
 #undef ONCHANGE
+#undef ONUNCOUPLE
+#undef ONCOUPLE
 #undef PARSE
 #undef PAUSE
 #undef PICKUP_STASH
 #undef PIN_TURNOUT 
+#undef PIN_UNCOUPLE
 #undef PRINT
 #undef POM
 #undef POWEROFF
@@ -171,6 +175,7 @@
 #undef SERVO2 
 #undef SERVO_TURNOUT 
 #undef SERVO_SIGNAL
+#undef SERVO_UNCOUPLE 
 #undef SET
 #undef SET_TRACK
 #undef SET_POWER
@@ -189,6 +194,7 @@
 #undef TT_ADDPOSITION
 #undef TURNOUT 
 #undef TURNOUTL
+#undef UNCOUPLE
 #undef UNJOIN
 #undef UNLATCH 
 #undef VIRTUAL_SIGNAL
@@ -361,6 +367,13 @@
  * @param profile Movement profile (Instant, Fast, Medium, Slow, Bounce)
  */
 #define CONFIGURE_SERVO(vpin,pos1,pos2,profile) 
+/**
+ * @def COUPLE(uncouple_id)
+ * @brief Couple coupler by id
+ * @see UNCOUPLE
+ * @param uncouple_id 
+ */
+#define COUPLE(uncouple_id)
 /**
  * @def DCC_SIGNAL(signal_id,addr,subaddr)
  * @brief Define a DCC accessory signal with short address
@@ -906,6 +919,18 @@
  */
 #define ONBUTTON(vpin)
 /**
+ * @def ONUNCOUPLE(uncouple_id)
+ * @brief Start task here when uncouple is Uncoupling
+ * @param uncouple_id 
+ */
+#define ONUNCOUPLE(uncouple_id) 
+/**
+ * @def ONCOUPLE(coupler_id)
+ * @brief Start task here when uncoupler is not UNCOUPLE
+ * @param uncouple_id 
+ */
+#define ONCOUPLE(uncouple_id) 
+/**
  * @def PAUSE
  * @brief Pauses all EXRAIL tasks except the curremnt one.
  * Other tasks ESTOP their locos until RESUME issued 
@@ -920,6 +945,15 @@
  
  */
 #define PIN_TURNOUT(id,vpin,description...) 
+/**
+ * @def PIN_UNCOUPLE(uncouple_id,vpin,description...)
+ * @brief Defines a uncouple which operates on a single pin
+ * @param uncouple_id 
+ * @param vpin 
+ * @param description... Quoted text (shown to throttles) or HIDDEN 
+ 
+ */
+#define PIN_UNCOUPLE(id,vpin,description...) 
 /**
  * @def PRINT(msg)
  * @brief prints diagnostic message on USB serial 
@@ -1167,6 +1201,17 @@
  */
 #define SERVO_TURNOUT(turnout_id,vpin,activeAngle,inactiveAngle,profile,description...) 
 /**
+ * @def SERVO_UNCOUPLE(uncouple_id,vpin,uncoupleAngle,inactiveAngle,profile,description...)
+ * @brief Define a servo driven uncoupler
+ * @param uncouple_id used by UNCOUPLE/COUPLE 
+ * @param vpin for servo
+ * @param uncoupleAngle servo position (values are hardware dependent)
+ * @param coupleAngle servo position (values are hardware dependent)
+ * @param profile movement profile (Instant, Fast, Medium, Slow, Bounce)
+ * @param description... Quoted text shown to throttles or HIDDEN keyword to hide turnout button 
+ */
+#define SERVO_UNCOUPLE(uncouple_id,vpin,uncoupleAngle,coupleAngle,profile,description...) 
+/**
  * @def SET(vpin,count...)
  * @brief  Set pin HIGH
  * @see RESET  
@@ -1294,6 +1339,13 @@
  * @param description... Quoted text or HIDDEN, appears on throttle buttons
  */
 #define TURNOUTL(tirnout_id,addr,description...) 
+/**
+ * @def UNCOUPLE(uncouple_id)
+ * @brief Uncouple given uncoupler
+ * @see COUPLE
+ * @param uncouple_id 
+ */
+#define UNCOUPLE(uncouple_id)
 /**
  * @def UNJOIN
  * @brief Disconnects PROG track from MAIN

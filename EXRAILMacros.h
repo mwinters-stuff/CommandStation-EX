@@ -294,6 +294,23 @@ const FSH * RMFT2::getTurnoutDescription(int16_t turnoutid) {
      return NULL;
 }
 
+// Pass 5: Uncouple descriptions (optional)
+#include "EXRAIL2MacroReset.h"
+#undef PIN_UNCOUPLE
+#define PIN_UNCOUPLE(id,pin,description...) O_DESC(id,description)
+#undef SERVO_UNCOUPLE
+#define SERVO_UNCOUPLE(id,pin,uncoupleAngle,coupleAngle,profile,description...) O_DESC(id,description)
+#undef VIRTUAL_UNCOUPLE
+#define VIRTUAL_UNCOUPLE(id,description...) O_DESC(id,description)
+
+const FSH * RMFT2::getUncoupleDescription(int16_t uncoupleid) {
+     switch (uncoupleid) {
+        #include "myAutomation.h"
+     default:break;
+     }
+     return NULL;
+}
+
 // Pass to get turntable descriptions (optional)
 #include "EXRAIL2MacroReset.h"
 #undef DCC_TURNTABLE
@@ -534,9 +551,13 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define ONCHANGE(sensor_id) OPCODE_ONCHANGE,V(sensor_id),
 #define ONSENSOR(sensor_id) OPCODE_ONSENSOR,V(sensor_id),
 #define ONBUTTON(sensor_id) OPCODE_ONBUTTON,V(sensor_id),
+#define ONUNCOUPLE(uncouple_id) OPCODE_ONUNCOUPLE,V(uncouple_id),
+#define ONCOUPLE(uncouple_id) OPCODE_ONCOUPLE,V(uncouple_id),
+
 #define PAUSE OPCODE_PAUSE,0,0,
 #define PICKUP_STASH(id) OPCODE_PICKUP_STASH,V(id),
 #define PIN_TURNOUT(id,pin,description...) OPCODE_PINTURNOUT,V(id),OPCODE_PAD,V(pin),
+#define PIN_UNCOUPLE(id,pin,description...) OPCODE_PINUNCOUPLE,V(id),OPCODE_PAD,V(pin),
 #define POM(cv,value) OPCODE_POM,V(cv),OPCODE_PAD,V(value),
 #define POWEROFF OPCODE_POWEROFF,0,0,
 #define POWERON OPCODE_POWERON,0,0,
@@ -573,6 +594,7 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define SERVO2(id,position,ms) OPCODE_SERVO,V(id),OPCODE_PAD,V(position),OPCODE_PAD,V(PCA9685::Instant),OPCODE_PAD,V(ms/100L),
 #define SERVO_SIGNAL(vpin,redpos,amberpos,greenpos)
 #define SERVO_TURNOUT(id,pin,activeAngle,inactiveAngle,profile,description...) OPCODE_SERVOTURNOUT,V(id),OPCODE_PAD,V(pin),OPCODE_PAD,V(activeAngle),OPCODE_PAD,V(inactiveAngle),OPCODE_PAD,V(PCA9685::ProfileType::profile),
+#define SERVO_UNCOUPLE(id,pin,uncoupleAngle,coupleAngle,profile,description...) OPCODE_SERVOUNCOUPLE,V(id),OPCODE_PAD,V(pin),OPCODE_PAD,V(uncoupleAngle),OPCODE_PAD,V(coupleAngle),OPCODE_PAD,V(PCA9685::ProfileType::profile),
 #define SET(pin,count...) OPCODE_SET,V(pin),OPCODE_PAD,V(#count[0] ? count+0: 1),
 #define SET_TRACK(track,mode)  OPCODE_SET_TRACK,V(TRACK_MODE_##mode  <<8 | TRACK_NUMBER_##track),
 #define SET_POWER(track,onoff) OPCODE_SET_POWER,V(TRACK_POWER_##onoff),OPCODE_PAD, V(TRACK_NUMBER_##track),
@@ -586,6 +608,8 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define STOP OPCODE_SPEED,V(0), 
 #define THROW(id)  OPCODE_THROW,V(id),
 #define TOGGLE_TURNOUT(id)  OPCODE_TOGGLE_TURNOUT,V(id),
+#define UNCOUPLE(id) OPCODE_UNCOUPLE,V(id),
+#define COUPLE(id) OPCODE_COUPLE,V(id),
 #ifndef IO_NO_HAL
 #define TT_ADDPOSITION(id,position,value,angle,description...) OPCODE_TTADDPOSITION,V(id),OPCODE_PAD,V(position),OPCODE_PAD,V(value),OPCODE_PAD,V(angle),
 #endif

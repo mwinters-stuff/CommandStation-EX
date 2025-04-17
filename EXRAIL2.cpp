@@ -58,7 +58,7 @@
 #include "IODevice.h"
 #include "EXRAILSensor.h"
 #include "Stash.h"
-
+#include "Uncouple.h"
 
 // One instance of RMFT clas is used for each "thread" in the automation.
 // Each thread manages a loco on a journey through the layout, and/or may manage a scenery automation.
@@ -78,6 +78,8 @@ LookList *  RMFT2::routeLookup=NULL;
 LookList *  RMFT2::signalLookup=NULL;
 LookList *  RMFT2::onThrowLookup=NULL;
 LookList *  RMFT2::onCloseLookup=NULL;
+LookList *  RMFT2::onUnCoupleLookup=NULL;
+LookList *  RMFT2::onCoupleLookup=NULL;
 LookList *  RMFT2::onActivateLookup=NULL;
 LookList *  RMFT2::onDeactivateLookup=NULL;
 LookList *  RMFT2::onRedLookup=NULL;
@@ -198,6 +200,8 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
   }
   onThrowLookup=LookListLoader(OPCODE_ONTHROW);
   onCloseLookup=LookListLoader(OPCODE_ONCLOSE);
+  onUnCoupleLookup=LookListLoader(OPCODE_ONUNCOUPLE);
+  onCoupleLookup=LookListLoader(OPCODE_ONCOUPLE);
   onActivateLookup=LookListLoader(OPCODE_ONACTIVATE);
   onDeactivateLookup=LookListLoader(OPCODE_ONDEACTIVATE);
   onChangeLookup=LookListLoader(OPCODE_ONCHANGE);
@@ -299,6 +303,23 @@ LookList* RMFT2::LookListLoader(OPCODE op1, OPCODE op2, OPCODE op3) {
       VPIN id=operand;
       VPIN pin=getOperand(progCounter,1);
       setTurnoutHiddenState(VpinTurnout::create(id,pin));
+      break;
+    }
+
+    case OPCODE_PINUNCOUPLE: {
+      VPIN id=operand;
+      VPIN pin=getOperand(progCounter,1);
+      VpinUncouple::create(id,pin);
+      break;
+    }
+
+    case OPCODE_SERVOUNCOUPLE: {
+      VPIN id=operand;
+      VPIN pin=getOperand(progCounter,1);
+      int uncoupleAngle=getOperand(progCounter,2);
+      int inactiveAngle=getOperand(progCounter,3);
+      int profile=getOperand(progCounter,4);
+      ServoUncouple::create(id,pin,uncoupleAngle,inactiveAngle,profile);
       break;
     }
 
@@ -553,6 +574,14 @@ void RMFT2::loop2() {
 
   case OPCODE_TOGGLE_TURNOUT:
     Turnout::setClosed(operand, Turnout::isThrown(operand));
+    break;
+
+  case OPCODE_UNCOUPLE:
+    Uncouple::setUncouple(operand, true);
+    break;
+    
+  case OPCODE_COUPLE:
+    Uncouple::setUncouple(operand, false);
     break;
 
 #ifndef IO_NO_HAL
@@ -1105,6 +1134,8 @@ void RMFT2::loop2() {
   case OPCODE_ONACON:   // MERG event catchers ignored here 
   case OPCODE_ONACOF:   // MERG event catchers ignored here 
   case OPCODE_ONTHROW:
+  case OPCODE_ONUNCOUPLE:
+  case OPCODE_ONCOUPLE:
   case OPCODE_ONACTIVATE: // Activate event catchers ignored here
   case OPCODE_ONDEACTIVATE:
   case OPCODE_ONRED:
@@ -1306,6 +1337,13 @@ void RMFT2::turnoutEvent(int16_t turnoutId, bool closed) {
   if (closed)  onCloseLookup->handleEvent(F("CLOSE"),turnoutId);
   else onThrowLookup->handleEvent(F("THROW"),turnoutId);
 }
+
+void RMFT2::uncoupleEvent(int16_t uncouplerId, bool isUncouple) {
+  // Hunt for an ONUNCOUPLE/ONCOUPLE for this turnout
+  if (isUncouple)  onUnCoupleLookup->handleEvent(F("UNCOUPLE"),uncouplerId);
+  else onCoupleLookup->handleEvent(F("COUPLE"),uncouplerId);
+}
+
 
 
 void RMFT2::activateEvent(int16_t addr, bool activate) {
