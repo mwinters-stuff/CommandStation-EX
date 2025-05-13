@@ -35,26 +35,69 @@ ROSTER(6,"DB Schenker Class 08","")
 
 
 // points
-SERVO_TURNOUT(100, 100, 300, 350, Instant, "Front Right Crossover")
+// "Front Right Crossover Outer"
+SERVO_TURNOUT(100, 100, 300, 350, Instant, HIDDEN)
 SERVO_TURNOUT(101, 101, 300, 360, Instant, "Front Right Reverse Loop")
 SERVO_TURNOUT(102, 102, 290, 320, Instant, "Front Right Loop")
 SERVO_TURNOUT(103, 103, 300, 350, Instant, "To Engine Shed")
 SERVO_TURNOUT(104, 104, 300, 360, Instant, "To Yard")
+// "Front Right Crossover Inner"
+SERVO_TURNOUT(105, 105, 260, 310, Instant,  HIDDEN)
 
-SERVO_TURNOUT(120, 120, 375, 300, Instant, "Front Left Crossover")
+// "Front Left Crossover Outer"
+SERVO_TURNOUT(120, 120, 375, 300, Instant, HIDDEN) 
 SERVO_TURNOUT(121, 121, 360, 300, Instant, "Front Left Loop")
-SERVO_TURNOUT(122, 122, 230, 300, Instant, "Back Left Crossover")
+// "Back Left Crossover Outer"
+SERVO_TURNOUT(122, 122, 230, 300, Instant, HIDDEN)
 SERVO_TURNOUT(123, 123, 230, 300, Instant, "Back Left Reverse Loop")
 
 SERVO_TURNOUT(124, 124, 250, 300, Instant, "Goods or Passenger")
-SERVO_TURNOUT(125, 125, 350, 310, Instant, "Passenger Sidings")
+SERVO_TURNOUT(125, 125, 260, 320, Instant, "Passenger Sidings")
 SERVO_TURNOUT(126, 126, 250, 300, Instant, "Goods Shed")
 SERVO_TURNOUT(127, 127, 250, 300, Instant, "Goods Sidings")
 
+// "Front Left Crossover Inner"
+SERVO_TURNOUT(128, 128, 260, 310, Instant,  HIDDEN)
+// "Back Left Crossover Inner"
+SERVO_TURNOUT(129, 129, 260, 310, Instant,  HIDDEN)
+
+VIRTUAL_TURNOUT(130, "Front Right Crossover")
+VIRTUAL_TURNOUT(131, "Front Left Crossover")
+VIRTUAL_TURNOUT(132, "Back Left Crossover")
 
 // sensors
 JMRI_SENSOR(200, 9)
 JMRI_SENSOR(220, 7)
+
+ONTHROW(130)
+  THROW(100)
+  THROW(105)
+DONE
+
+ONCLOSE(130)
+  CLOSE(100)
+  CLOSE(105)
+DONE
+
+ONTHROW(131)
+  THROW(120)
+  THROW(128)
+DONE
+
+ONCLOSE(131)
+  CLOSE(120)
+  CLOSE(128)
+DONE
+
+ONTHROW(132)
+  THROW(122)
+  THROW(129)
+DONE
+
+ONCLOSE(132)
+  CLOSE(122)
+  CLOSE(129)
+DONE
 
 // /* SEQUENCE(1) is a simple shuttle between 2 sensors      
 //  *  S20 and S21 are sensors on arduino pins 20 and 21 
