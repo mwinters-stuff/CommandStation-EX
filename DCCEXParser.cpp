@@ -2,7 +2,7 @@
  *  © 2022 Paul M Antoine
  *  © 2021 Neil McKechnie
  *  © 2021 Mike S
- *  © 2021-2025 Herb Morton
+ *  © 2021-2024 Herb Morton
  *  © 2020-2023 Harald Barth
  *  © 2020-2021 M Steve Todd
  *  © 2020-2021 Fred Decker
@@ -645,19 +645,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	    else break; // will reply <X>
 	  }
 	  //TrackManager::streamTrackState(NULL,t);
-
-      // reinitialize DC mode timer settings following powerON
-      #ifdef ARDUINO_ARCH_STM32
-        for (uint8_t i = 0; i < 8; i++)  {
-          TrackManager::setTrackPowerF439ZI(i);
-        }
-          // repeated in case the <F29..31 was set on a later track than power
-          // Note:  this retains power but prevents speed doubling
-        for (uint8_t i = 0; i < 7; i++)  {
-            TrackManager::setTrackPowerF439ZI(i);
-        }
-      #endif
-
+          
 	  return;
 	}
             
@@ -812,11 +800,6 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
                 case "I"_hk: // <JI> current values
                     if (params>1) break;
                     TrackManager::reportCurrent(stream);   // <g limit...limit>     
-                    return;
-
-                case "L"_hk: // <JL display row> track state and mA value on display
-                    if (params!=3) break;
-                    TrackManager::reportCurrentLCD(p[1], p[2]);   // Track power status     
                     return;
 
                 case "A"_hk: // <JA> intercepted by EXRAIL// <JA> returns automations/routes
@@ -1615,6 +1598,7 @@ void DCCEXParser::callback_Wloco(int16_t result)
 
 void DCCEXParser::callback_Wconsist(int16_t result)
 {
+    if (result==-4) DIAG(F("Long Consist %d not supported by decoder"),stashP[1]);
     if (result==1) result=stashP[1]; // pick up original requested id from command
     StringFormatter::send(getAsyncReplyStream(), F("<w CONSIST %d%S>\n"),
      result, stashP[2]=="REVERSE"_hk ? F(" REVERSE") : F(""));

@@ -3,7 +3,18 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.5.18"
+#define VERSION "5.5.25"
+// 5.2.25 - IO_Bitmap and assicated Exrail macros
+// 5.5.24 - SensorCAM in I2C scan and automatically setClock
+// 5.5.23 - Reminder loop Idle packet optimization
+// 5.5.22 - (5.4.9) Handle non-compliant decoders returning 255 for cv 20 and confusing <R> with bad consist addresses.
+//        - DCC 5mS gap to same loco DCC packet restriction
+//        - Catch up MASTER for ESP32 IDF version check
+//        - Catch up MASTER for Serial input length check
+//        - Catch up MASTER for JOIN/POWER order change
+// 5.5.21 - Backed out the broken merge with frequency change and 
+// 5.5.20 - EXRAIL SET/RESET assert fix  
+// 5.5.19 - Railcom change to use RailcomCollector device  
 // 5.5.18 - New STASH internals 
 //        - EXRAIL IFSTASH/CLEAR_ANY_STASH
 //        - <JM CLEAR ANY id> to clear any stash with loco id
