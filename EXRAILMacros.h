@@ -95,21 +95,29 @@
 #define STEALTH_GLOBAL(code...) code
 #include "myAutomation.h"
 
-// Pass 1h Implements HAL macro by creating exrailHalSetup function
+// Pass 1h Implements HAL macro by creating exrailHalSetup1 function
 // Also allows creating EXTurntable object
 #include "EXRAIL2MacroReset.h"
 #undef HAL
 #define HAL(haltype,params...)  haltype::create(params);
 #undef HAL_IGNORE_DEFAULTS
 #define HAL_IGNORE_DEFAULTS ignore_defaults=true;
+bool exrailHalSetup1() {
+   bool ignore_defaults=false;
+   #include "myAutomation.h"
+   return ignore_defaults;
+}
+
+// Pass 1s Implements servos by creating exrailHalSetup2
+// TODO Turnout and turntable creation should be moved to here instead of 
+// the first pass from the opcode table. 
+#include "EXRAIL2MacroReset.h"
 #undef JMRI_SENSOR
 #define JMRI_SENSOR(vpin,count...) Sensor::createMultiple(vpin,##count);
 #undef  CONFIGURE_SERVO
 #define CONFIGURE_SERVO(vpin,pos1,pos2,profile) IODevice::configureServo(vpin,pos1,pos2,PCA9685::profile);
-bool exrailHalSetup() {
-   bool ignore_defaults=false;
+void exrailHalSetup2() {
    #include "myAutomation.h"
-   return ignore_defaults;
 }
 
 // Pass 1c detect compile time featurtes
@@ -544,6 +552,8 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define ONCLOCKTIME(hours,mins) OPCODE_ONTIME,V((STRIP_ZERO(hours)*60)+STRIP_ZERO(mins)),
 #define ONCLOCKMINS(mins) ONCLOCKTIME(25,mins)
 #define ONOVERLOAD(track_id) OPCODE_ONOVERLOAD,V(TRACK_NUMBER_##track_id),
+#define ONRAILSYNCON OPCODE_ONRAILSYNCON,0,0,
+#define ONRAILSYNCOFF OPCODE_ONRAILSYNCOFF,0,0,
 #define ONDEACTIVATE(addr,subaddr) OPCODE_ONDEACTIVATE,V(addr<<2|subaddr),
 #define ONDEACTIVATEL(linear) OPCODE_ONDEACTIVATE,V(linear+3),
 #define ONGREEN(signal_id) OPCODE_ONGREEN,V(signal_id),
