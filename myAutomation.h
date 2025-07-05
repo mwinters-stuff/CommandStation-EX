@@ -25,13 +25,16 @@
 
 #include "EXRAILMacros.h"
 
-ROSTER(5,"A4 William Whitehall","")
-ROSTER(6,"DB Schenker Class 08","")
+ROSTER(5,"A4 William Whitehall","///F3 Shunting")
+ROSTER(6,"DB Schenker Class 08","///F3 Shunting")
+ROSTER(7,"Duchess of Montrose",
+  "/F1 Background/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Slam Doors/F16 Firemans Breakfast/F17 Blowdown/*F18 Coal Pusher/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/F26 Creep Mode/F27 Apply Brake/F28 Auto Function Play"
+)
 
 // // This is the startup sequence, 
-// AUTOSTART
-// POWERON        // turn on track power
-// DONE     // This just ends the startup thread, leaving 2 others running.
+AUTOSTART
+POWERON        // turn on track power
+DONE     // This just ends the startup thread, leaving 2 others running.
 
 
 // points
@@ -39,7 +42,7 @@ ROSTER(6,"DB Schenker Class 08","")
 SERVO_TURNOUT(100, 100, 300, 350, Instant, HIDDEN)
 SERVO_TURNOUT(101, 101, 300, 360, Instant, "Front Right Reverse Loop")
 SERVO_TURNOUT(102, 102, 290, 320, Instant, "Front Right Loop")
-SERVO_TURNOUT(103, 103, 300, 350, Instant, "To Engine Shed")
+SERVO_TURNOUT(103, 103, 350, 300, Instant, "To Engine Shed")
 SERVO_TURNOUT(104, 104, 300, 360, Instant, "To Yard")
 // "Front Right Crossover Inner"
 SERVO_TURNOUT(105, 105, 260, 310, Instant,  HIDDEN)

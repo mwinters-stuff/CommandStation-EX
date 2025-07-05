@@ -24,8 +24,9 @@
 //#include "IO_TouchKeypad.h  // Touch keypad with 16 keys
 //#include "IO_EXTurntable.h"   // Turntable-EX turntable controller
 //#include "IO_EXFastClock.h"  // FastClock driver
-// #include "IO_PCA9555.h"     // 16-bit I/O expander (NXP & Texas Instruments).
-#include "IO_PCA9685pwm.h"     // 16-bit I/O expander (NXP & Texas Instruments).
+//#include "IO_PCA9555.h"     // 16-bit I/O expander (NXP & Texas Instruments).
+//#include "IO_I2CDFPlayer.h" // DFPlayer over I2C
+// #include "IO_PCA9685pwm.h"
 #include "IO_PCF8575.h"
 
 //==========================================================================
@@ -101,7 +102,7 @@ void halSetup() {
 
   PCA9685::create(100, 16, 0x40);
   PCA9685::create(120, 16, 0x41);
-
+  PCA9685::create(140, 16, 0x42);
 
   //=======================================================================
   // The following directive defines an MCP23017 16-port I2C GPIO Extender module.
@@ -141,7 +142,7 @@ void halSetup() {
   //   Number of VPINs=8 (numbered 200-207)
   //   I2C address of module=0x23
 
-  //PCF8574::create(200, 8, 0x23);
+  // PCF8574::create(200, 8, 0x20);
 
 
   // Alternative form using INT pin (see above)
@@ -159,7 +160,6 @@ void halSetup() {
 
   PCF8575::create(200, 16, 0x21);
   PCF8575::create(220, 16, 0x22);
-
 
   // Alternative form using INT pin (see above)
 
@@ -239,6 +239,31 @@ void halSetup() {
 
 
   //=======================================================================
+  // Play mp3 files from a Micro-SD card, using a DFPlayer MP3 Module on a SC16IS750/SC16IS752 I2C UART
+  //=======================================================================
+  // DFPlayer via NXP SC16IS752 I2C Dual UART.
+  // I2C address range 0x48 - 0x57
+  // 
+  // Generic format: 
+  // I2CDFPlayer::create(1st vPin, vPins, I2C address, xtal);
+  // Parameters:
+  // 1st vPin     : First virtual pin that EX-Rail can control to play a sound, use PLAYSOUND command (alias of ANOUT)
+  // vPins        : Total number of virtual pins allocated (1 vPin is supported currently)
+  //                1st vPin for UART 0
+  // I2C Address  : I2C address of the serial controller, in 0x format
+  // xtal         : 0 for 1.8432Mhz, 1 for 14.7456Mhz
+  //
+  // The vPin is also a pin that can be read with the WAITFOR(vPin) command indicating if the DFPlayer has finished playing a track
+  //
+  
+  // I2CDFPlayer::create(10000,  1, 0x48, 1);
+  //
+  // Configuration example on a multiplexer
+  // I2CDFPlayer::create(10000, 1, {I2CMux_0, SubBus_0, 0x48}, 1);
+
+
+
+  //=======================================================================
   // 16-pad capacitative touch key pad based on TP229 IC.
   //=======================================================================
   // Parameters below:
@@ -281,7 +306,7 @@ void halSetup() {
   // Note that the I2C address is defined in the EX-IOExpander code, and 0x65 is the default.
   // The example is for an Arduino Nano.
 
-  // EXIOExpander::create(800, 18, 0x65);
+  //EXIOExpander::create(800, 18, 0x65);
 
 
   //=======================================================================
@@ -289,12 +314,13 @@ void halSetup() {
   //=======================================================================
   // The parameters are: 
   //   firstVpin = First available Vpin to allocate
-  //   numPins= Number of Vpins to allocate, can be either 1 or 2
-  //   i2cAddress = Available I2C address (default 0x70)
+  //   numPins= Number of Vpins to allocate, can be either 1 to 3
+  //   i2cAddress = Available I2C address (default 0x67)
 
   //RotaryEncoder::create(firstVpin, numPins, i2cAddress);
-  //RotaryEncoder::create(700, 1, 0x70);
-  //RotaryEncoder::create(701, 2, 0x71);
+  //RotaryEncoder::create(700, 1, 0x67);
+  //RotaryEncoder::create(700, 2, 0x67);
+  //RotaryEncoder::create(700, 3, 0x67);
 
  //=======================================================================
   // The following directive defines an EX-FastClock instance.
@@ -310,8 +336,6 @@ void halSetup() {
  
   //   EXFastClock::create(0x55);
 
-
-  // PCA9685pwm::create(900, 16, 0x60);
 }
 
 #endif
