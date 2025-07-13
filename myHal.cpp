@@ -104,6 +104,7 @@ void halSetup() {
   PCA9685::create(120, 16, 0x41);
   PCA9685::create(140, 16, 0x42);
 
+  
   //=======================================================================
   // The following directive defines an MCP23017 16-port I2C GPIO Extender module.
   //=======================================================================
@@ -157,7 +158,7 @@ void halSetup() {
   //   First Vpin=200
   //   Number of VPINs=16 (numbered 200-215)
   //   I2C address of module=0x23
-
+  // PCF8575::create(300, 16, 0x20);
   PCF8575::create(200, 16, 0x21);
   PCF8575::create(220, 16, 0x22);
 
