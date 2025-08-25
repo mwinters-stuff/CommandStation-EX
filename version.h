@@ -3,7 +3,12 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.5.38"
+#define VERSION "5.5.41"
+// 5.5.41 - Bugfix: Toolbox not showing sensors
+//        - MAX_LOCOS can be defined in config.h
+// 5.5.40 - Bugfix: EXSensorCAM.h use check byte for i2c error detection
+// 5.5.39 - Remove of unused EX-CommandStation-installer.exe
+//        - Bugfix: Sniffer and reminder table overflow
 // 5.5.38 - Bugfix: restore EXRAIL/ENDEXRAIL obsolete macros as no-operations
 //        - RAM Saver feature: JMRI_SENSOR and JMRI_SENSOR_NOPULLUP
 // 5.5.37 - Bugfix: Keep power status of track when doing join/unjoin, new keep power option for setTrackMode()

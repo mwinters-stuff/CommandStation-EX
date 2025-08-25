@@ -6,7 +6,7 @@
  *  © 2020-2025 Chris Harlow
  *  All rights reserved.
  *  
- *  This file is part of Asbelos DCC API
+ *  This file is part of DCC-EX API
  *
  *  This is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,13 +40,7 @@
 const uint16_t LONG_ADDR_MARKER = 0x4000;
 
 
-// Allocations with memory implications..!
-// Base system takes approx 900 bytes + 8 per loco. Turnouts, Sensors etc are dynamically created
-#if defined(HAS_ENOUGH_MEMORY)
-const byte MAX_LOCOS = 50;
-#else
-const byte MAX_LOCOS = 30;
-#endif
+// MAX_LOCOS moved to defines.h
 
 class DCC
 {
@@ -120,7 +114,7 @@ public:
  static byte getMomentum(LOCO * slot);
  
  static LOCO speedTable[MAX_LOCOS];
- static LOCO * lookupSpeedTable(int locoId, bool autoCreate=true);
+ static LOCO * lookupSpeedTable(int locoId, bool autoCreate);
  static byte cv1(byte opcode, int cv);
  static byte cv2(int cv);
  static bool setMomentum(int locoId,int16_t accelerating, int16_t decelerating);
