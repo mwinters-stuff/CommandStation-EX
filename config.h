@@ -56,7 +56,11 @@ The configuration file for DCC-EX Command Station
 //   |
 //   +-----------------------v
 //
+#ifdef ARDUINO_ARCH_ESP32
 #define MOTOR_SHIELD_TYPE EXCSB1
+#else
+#define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
+#endif
 //
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -83,7 +87,11 @@ The configuration file for DCC-EX Command Station
 // NOTE: Not supported on Arduino Uno or Nano
 // Set to false if you not even want it on the Arduino Mega
 //
+#ifdef ARDUINO_ARCH_ESP32
 #define ENABLE_WIFI true
+#else
+#define ENABLE_WIFI false
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -118,7 +126,11 @@ The configuration file for DCC-EX Command Station
 // WIFI_HOSTNAME: You can change this if you have more than one
 // CS to make them show up with different names on the network.
 // Otherwise do not touch.
+#ifdef ARDUINO_ARCH_ESP32
 #define WIFI_HOSTNAME "dccex"
+#else
+#define WIFI_HOSTNAME "dccex-test"
+#endif
 //
 // WIFI_CHANNEL: The default channel is set to "1". If you need to use an
 // alternate channel (we recommend using only 1,6, or 11) you may change it here.
@@ -149,7 +161,9 @@ The configuration file for DCC-EX Command Station
 // on the W5100/W5500 ethernet chip or an STM32 CS with builin ethernet like the F429ZI.
 // This is not for Wifi. You will then need the Arduino Ethernet library as well.
 //
-//#define ENABLE_ETHERNET true
+#ifndef ARDUINO_ARCH_ESP32
+#define ENABLE_ETHERNET true
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -183,7 +197,9 @@ The configuration file for DCC-EX Command Station
 //OR define OLED_DRIVER width,height[,address] in pixels (address auto detected if not supplied)
 // 128x32 or 128x64 I2C SSD1306-based devices are supported.
 // Use 132,64 for a SH1106-based I2C device with a 128x64 display.
+#ifdef ARDUINO_ARCH_ESP32
 #define OLED_DRIVER 0x3c,128,64
+#endif
 
 // Define scroll mode as 0, 1 or 2
 //  *  #define SCROLLMODE 0 is scroll continuous (fill screen if poss),

@@ -1,11 +1,16 @@
 #include "EXRAILMacros.h"
 
-ROSTER(5,"A4 William Whitehall","///F3 Shunting")
-ROSTER(6,"DB Schenker Class 08","///F3 Shunting")
+ROSTER(5,"A4 William Whitehall",
+  "/F1 Background/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Slam Doors/F16 Firemans Breakfast/F17 Blowdown/*F18 Coal Pusher/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/F26 Creep Mode/F27 Apply Brake/F28 Auto Function Play"
+)
+ROSTER(6,"DB Schenker Class 08",
+  "///F3 Shunting"
+)
 ROSTER(7,"Duchess of Montrose",
   "/F1 Background/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Slam Doors/F16 Firemans Breakfast/F17 Blowdown/*F18 Coal Pusher/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/F26 Creep Mode/F27 Apply Brake/F28 Auto Function Play"
 )
 
+#ifdef ARDUINO_ARCH_ESP32
 ALIAS(SEQUENCE_STARTUP)
 
 
@@ -13,6 +18,7 @@ ALIAS(SEQUENCE_STARTUP)
 AUTOSTART
   START(SEQUENCE_STARTUP)    
 DONE 
+#endif 
 
 // point alias pins
 ALIAS(POINT_FRONT_RIGHT_CROSS_OUTER_PIN    , 100)
@@ -60,6 +66,7 @@ ALIAS(POINT_BACK_RIGHT_CROSS_OUTER)
 ALIAS(POINT_BACK_RIGHT_CROSS_INNER)
 ALIAS(POINT_BACK_RIGHT_CROSSOVER)
 
+#ifdef ARDUINO_ARCH_ESP32
 
 // uncoupler alias pins
 ALIAS(UNCOUPLER_FRONT_RIGHT_OUTER_PIN, 108)
@@ -139,6 +146,7 @@ ALIAS(SENSOR_OCCUPIED_YARD                       , 205)
 ALIAS(SENSOR_LEFT_INNER_CURVE                    , 203)
 ALIAS(SENSOR_LEFT_OUTER_CURVE                    , 204)
 
+#endif
 // JMRI_SENSOR(200,9)
 // JMRI_SENSOR(220,7)
 
@@ -177,6 +185,7 @@ VIRTUAL_TURNOUT(POINT_FRONT_LEFT_CROSSOVER , "Front Left Crossover")
 VIRTUAL_TURNOUT(POINT_BACK_LEFT_CROSSOVER  , "Back Left Crossover")
 VIRTUAL_TURNOUT(POINT_BACK_RIGHT_CROSSOVER , "Back Right Crossover")
 
+#ifdef ARDUINO_ARCH_ESP32
 
 // UNCOUPLERS, are defined as servo_turnouts
 SERVO_TURNOUT(UNCOUPLER_FRONT_RIGHT_OUTER, UNCOUPLER_FRONT_RIGHT_OUTER_PIN, 260, 300, Instant, "Front Right Outer Uncoupler")
@@ -915,3 +924,4 @@ DONE
 
 
 
+#endif

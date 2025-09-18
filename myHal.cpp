@@ -102,6 +102,7 @@ void halSetup() {
 
   PCA9685::create(100, 16, 0x40);
   PCA9685::create(120, 16, 0x41);
+#ifdef ARDUINO_ARCH_ESP32
   PCA9685::create(140, 16, 0x42);
   PCA9685::create(340, 16, 0x43);
   PCA9685::create(360, 16, 0x44);
@@ -112,6 +113,7 @@ void halSetup() {
   PCF8575::create(220, 16, 0x22);
   PCF8575::create(300, 16, 0x20);
   PCF8575::create(320, 16, 0x23);
+#endif
   //=======================================================================
   // The following directive defines an MCP23017 16-port I2C GPIO Extender module.
   //=======================================================================
