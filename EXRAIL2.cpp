@@ -829,6 +829,10 @@ void RMFT2::loop2() {
   case OPCODE_IFSTASH:
     skipIf=Stash::get(operand)==0;
     break;
+  
+  case OPCODE_IFSTASHED_HERE:
+    skipIf=(Stash::get(operand) & 0x7FFF)!=loco;
+    break;
 
 #ifndef IO_NO_HAL
   case OPCODE_IFTTPOSITION: // do block if turntable at this position
@@ -967,7 +971,7 @@ void RMFT2::loop2() {
 
   case OPCODE_READ_LOCO1: // READ_LOCO is implemented as 2 separate opcodes
     progtrackLocoId=LOCO_ID_WAITING;  // Nothing found yet
-    DCC::getLocoId(readLocoCallback);
+    DCC::getDriveawayLocoId(readLocoCallback);
     break;
     
   case OPCODE_READ_LOCO2:

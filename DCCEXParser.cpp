@@ -333,9 +333,14 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
         int16_t direction;
 
         if (params==1) {  // <t cab>  display state
-         if (p[0]<=0) break;
-	     CommandDistributor::broadcastLoco(DCC::lookupSpeedTable(p[0],false));
-	     return;
+          if (p[0]<0 || p[0]>10239) break; // beyond DCC range
+          // send current state of this cab
+	      auto slot=LocoSlot::getSlot(p[0],false);
+	      if (slot)
+	        CommandDistributor::broadcastLoco(slot);
+	      else // send dummy state speed 0 fwd no functions.
+            StringFormatter::send(stream,F("<l %d -1 128 0>\n"),p[0]);
+	      return;
         }
 
         if (params == 4)
@@ -588,10 +593,18 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
         return;
 
     case 'R': // READ CV ON PROG
-        if (params == 1)
-        { // <R CV> -- uses verify callback
-            if (!stashCallback(stream, p, ringStream))
-                break;
+        if (params == 1) {
+            if (!stashCallback(stream, p, ringStream)) break;
+            if (p[0]=="LOCOID"_hk) { // <R LOCOID> read consist id
+                DCC::getLocoId(callback_Rloco);
+                return;
+            }
+            if (p[0]=="CONSIST"_hk) { // <R CONSIST> read consist id
+                DCC::getConsistId(callback_Rloco);
+                return;
+            }
+            
+            // <R CV> -- uses verify callback
             DCC::verifyCVByte(p[0], 0, callback_Vbyte);
             return;
         }
@@ -603,10 +616,10 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
             return;
         }
         if (params == 0)
-        { // <R> New read loco id
+        { // <R> New read driveaway loco id
             if (!stashCallback(stream, p, ringStream))
                 break;
-            DCC::getLocoId(callback_Rloco);
+            DCC::getDriveawayLocoId(callback_Rloco);
             return;
         }
         break;
@@ -1526,19 +1539,29 @@ void DCCEXParser::callback_r(int16_t result)
 }
 
 void DCCEXParser::callback_Rloco(int16_t result) {
+  // determine type of <R command from stashP[0]
+  const FSH * typetag;
+  if (stashP[0]=="LOCOID"_hk) {
+    typetag=F("LOCOID ");
+  } else if (stashP[0]=="CONSIST"_hk) {
+    typetag=F("CONSIST ");
+  } else {
+    typetag=F("");
+  }
+
   const FSH * detail;
   if (result<=0) {
-    detail=F("<r %d>\n");
+    detail=F("<r %S%d>\n");
   } else {
     bool longAddr=result & LONG_ADDR_MARKER;        //long addr
     if (longAddr)
       result = result^LONG_ADDR_MARKER;
     if (longAddr && result <= HIGHEST_SHORT_ADDR)
-      detail=F("<r LONG %d UNSUPPORTED>\n");
+      detail=F("<r LONG %S%d UNSUPPORTED>\n");
     else
-      detail=F("<r %d>\n");
+      detail=F("<r %S%d>\n");
   }
-  StringFormatter::send(getAsyncReplyStream(), detail, result);
+  StringFormatter::send(getAsyncReplyStream(), detail, typetag,result);
   commitAsyncReplyStream();
 }
 

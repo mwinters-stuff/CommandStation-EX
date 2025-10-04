@@ -3,7 +3,12 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.5.44"
+#define VERSION "5.5.46"
+// 5.5.46 - Major rewrite of loco table 
+// 5.5.45 - Incoming <@ row col "text"> command
+//        - Bugfix: <t cab> for unknown loco
+//        - new <R LOCOID> and <R CONSIST> commands
+//        - new EXRAIL IFSTASHED_HERE(stashId) function  
 // 5.5.44 - Config simplification (default obvious values)
 //        - Config will no longer include config.example.h
 //        - Bugfix: DS1307 serial when clock not set
