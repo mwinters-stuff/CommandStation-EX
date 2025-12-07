@@ -42,6 +42,7 @@ Once a new OPCODE is decided upon, update this list.
   #, Request number of supported cabs/locos; heartbeat
   +, WiFi AT commands
   ?, Reserved for future use
+  ^, Consist commands
   0, Track power off
   1, Track power on
   a, DCC accessory control
@@ -120,6 +121,7 @@ Once a new OPCODE is decided upon, update this list.
 #include "KeywordHasher.h"
 #include "CamParser.h"
 #include "Stash.h"
+#include "DCCConsist.h"
 #ifdef ARDUINO_ARCH_ESP32
 #include "WifiESP32.h"
 #include "DCCDecoder.h"
@@ -376,11 +378,14 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	if (cab > 10239 || cab < 0)
 	    break; // beyond DCC range
 
-        DCC::setThrottle(cab, tspeed, direction);
-        if (params == 4) // send obsolete format T response
+        if (DCC::setThrottle(cab, tspeed, direction)) {
+	  if (params == 4) // send obsolete format T response
             StringFormatter::send(stream, F("<T %d %d %d>\n"), p[0], p[2], p[3]);
-        // speed change will be broadcast anyway in new <l > format
-        return;
+	  // speed change will be broadcast anyway in new <l > format
+	  return;
+	} else {
+	  break; // setThrottle() failed means slot table was full.
+	}
     }
     case 'f': // FUNCTION <f CAB BYTE1 [BYTE2]>
         if (parsef(stream, params, p))
@@ -734,7 +739,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	DCCDecoder::onoff(on);
 	return;
       }
-#if ENABLE_WIFI
+#if WIFI_ON
       if (p[0] == "WIFI"_hk) { 	// <C WIFI SSID PASSWORD>
 	if (params != 5)        // the 5 params 0 to 4 are (kinda): WIFI_hk 0x7777 &SSID 0x7777 &PASSWORD
 	  break;
@@ -760,7 +765,16 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
         break;
 
     case '#': // NUMBER OF LOCOSLOTS <#>
-        StringFormatter::send(stream, F("<# %d>\n"), MAX_LOCOS);
+        {
+	  int free = DCCTimer::getMinimumFreeMemory();
+	  int freeSlotGuess = free/sizeof(LocoSlot);
+	  freeSlotGuess = freeSlotGuess - 2; // be conservative
+	  if (freeSlotGuess > MAX_LOCOS)
+	    freeSlotGuess = MAX_LOCOS;
+	  if (freeSlotGuess < 0)
+	    freeSlotGuess = 0;
+	  StringFormatter::send(stream, F("<# %d>\n"), freeSlotGuess);
+	}
         return;
 
     case '-': // Forget Loco <- [cab]>
@@ -782,6 +796,10 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
             DIAG(F("Setting loco %d F%d %S"), p[0], p[1], p[2] ? F("ON") : F("OFF"));
         if (DCC::setFn(p[0], p[1], p[2] == 1)) return;
 	break;
+
+    case '^': // Consist  <^ [cab0..7]>
+        if (DCCConsist::parse(stream,params,p)) return;
+        break;
 
 #if WIFI_ON
     case '+': // Complex Wifi interface command (not usual parse)
@@ -805,7 +823,7 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
                         StringFormatter::send(stream, F("<jC %d>\n"), x);
                         return;
                     }
-                    CommandDistributor::setClockTime(p[1], p[2], 1);
+                    CommandDistributor::setClockTime(p[1], p[2]);
                     return;
                 
                 case "G"_hk: // <JG> current gauge limits

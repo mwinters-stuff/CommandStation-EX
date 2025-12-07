@@ -119,7 +119,7 @@ void  CommandDistributor::parse(byte clientId,byte * buffer, RingStream * stream
     // or the command generated more output than fits in
     // the buffer
     if (!ring->commit()) {
-      DIAG(F("OUTBOUND FULL processing cmd:%s"),buffer);
+      DIAG(F("OUTBOUND FULL for client %d processing cmd:%s"),clientId, buffer);
     }
   } else {
     DIAG(F("CD parse: was alredy committed")); //XXX Could have been committed by broadcastClient?!
@@ -201,19 +201,18 @@ void  CommandDistributor::broadcastClockTime(int16_t time, int8_t rate) {
 #endif
 }
 
-void CommandDistributor::setClockTime(int16_t clocktime, int8_t clockrate, byte opt) {
-  // opt - case 1 save the latest time if changed
-  //       case 2 broadcast the time when requested
-  //       case 3 display latest time
-  switch (opt)
-  {
-    case 1:
+void CommandDistributor::setClockTime(int16_t clocktime, int8_t clockrate) {
+  // save the latest time if changed
       if (clocktime != lastclocktime){
         auto difference = clocktime - lastclocktime;
         if (difference<0) difference+=1440;
         DCC::setTime(clocktime,clockrate,difference>2);
-        // CAH. DIAG removed because LCD does it anyway. 
-        LCD(6,F("Clk Time:%d Sp %d"), clocktime, clockrate);
+        byte hh=clocktime/60;
+        byte mm=clocktime%60;
+        if (hh>23) hh=0;
+        LCD(6,clockrate<=1?F("Time %d%d:%d%d"):F("Time %d%d:%d%d (%d)"),
+             hh/10, hh%10, mm/10, mm%10, clockrate);
+
         // look for an event for this time
 #ifdef EXRAIL_ACTIVE        
         RMFT2::clockEvent(clocktime,1);
@@ -223,14 +222,7 @@ void CommandDistributor::setClockTime(int16_t clocktime, int8_t clockrate, byte 
         lastclocktime = clocktime;
         lastclockrate = clockrate;
       }
-      return;
-
-    case 2:
-      CommandDistributor::broadcastClockTime(lastclocktime, lastclockrate);
-      return;
-  }
- 
-}
+    }
 
 int16_t CommandDistributor::retClockTime() {
   return lastclocktime;
@@ -241,9 +233,35 @@ void  CommandDistributor::broadcastLoco(LocoSlot *  sp) {
     broadcastReply(COMMAND_TYPE,F("<l 0 -1 128 0>\n"));
     return;
 	}
-  broadcastReply(COMMAND_TYPE, F("<l %d 0 %d %l>\n"), 
-    sp->getLoco(),sp->getTargetSpeed(),sp->getFunctions());
-#ifdef SABERTOOTH
+
+  // Broadcast the given loco.
+  // If its a consist leader, broadcast all followers too.
+  // A consist follower will only be broadcast because its functions have changed.
+  
+  bool isFollower=sp->isConsistFollower();
+  
+  #ifdef CD_HANDLE_RING
+  // Use the buffer directly to avoid multiple transmits in the case of a consist
+  broadcastBufferWriter->flush();
+  for (auto slot=sp; slot; slot=slot->getConsistNext()) {
+    StringFormatter::send(broadcastBufferWriter, F("<l %d 0 %d %l>"), 
+      slot->getLoco(),slot->getTargetSpeed(),slot->getFunctions());
+    if (isFollower) break;  // dont follow next chain if original call was for a follower
+  }
+  broadcastBufferWriter->print('\n');
+  broadcastToClients(COMMAND_TYPE);
+  broadcastToClients(WEBSOCKET_TYPE);
+  
+#else
+  // no ring handling, just broadcast each separately
+  for (auto slot=sp; slot; slot=slot->getConsistNext()) {
+    broadcastReply(COMMAND_TYPE, F("<l %d 0 %d %l>\n"), 
+      slot->getLoco(),slot->getTargetSpeed(),slot->getFunctions());
+    if (isFollower) break;  // dont follow next chain if original call was for a follower
+  }
+  #endif
+
+  #ifdef SABERTOOTH
   if (Serial2 && sp->loco == SABERTOOTH) {
     static uint8_t rampingmode = 0;
     auto speedCode=sp->getSpeedCode();
@@ -288,60 +306,74 @@ void  CommandDistributor::broadcastForgetLoco(int16_t loco) {
 
 void  CommandDistributor::broadcastPower() {
   char pstr[] = "? x";
-  for(byte t=0; t<TrackManager::MAX_TRACKS; t++)
-    if (TrackManager::getPower(t, pstr))
-      broadcastReply(COMMAND_TYPE, F("<p%s>\n"),pstr);
-
   byte trackcount=0;
   byte oncount=0;
   byte offcount=0;
-  for(byte t=0; t<TrackManager::MAX_TRACKS; t++) {
-    if (TrackManager::isActive(t)) {
-      trackcount++;
-      // do not call getPower(t) unless isActive(t)!
-      if (TrackManager::getPower(t) == POWERMODE::ON)
-	oncount++;
-      else
-	offcount++;
-    }
-  }
-  //DIAG(F("t=%d on=%d off=%d"), trackcount, oncount, offcount);
+  uint8_t numTracks = TrackManager::numTracks();
+  {
+    char trackLetter[numTracks+1];
+    trackLetter[numTracks] = '\0';
 
-  char state='2';
-  if (oncount==0 || offcount == trackcount)
-    state = '0';
-  else if (oncount == trackcount) {
-    state = '1';
-  }
-
-  if (state != '2')
-    broadcastReply(COMMAND_TYPE, F("<p%c>\n"),state);
-
-  // additional info about MAIN, PROG and JOIN
-  bool main=TrackManager::getMainPower()==POWERMODE::ON;
-  bool prog=TrackManager::getProgPower()==POWERMODE::ON;
-  bool join=TrackManager::isJoined();
-  //DIAG(F("m=%d p=%d j=%d"), main, prog, join);
-  const FSH * reason=F("");
-  if (join) {
-    reason = F(" JOIN"); // with space at start so we can append without space
-    broadcastReply(COMMAND_TYPE, F("<p1%S>\n"),reason);
-  } else {
-    if (main) {
-      //reason = F("MAIN");
-      broadcastReply(COMMAND_TYPE, F("<p1 MAIN>\n"));
+    for(byte t=0; t<numTracks; t++) {
+      if (TrackManager::getPower(t, pstr))
+	broadcastReply(COMMAND_TYPE, F("<p%s>\n"),pstr);
+      if (TrackManager::isActive(t)) {
+	trackcount++;
+	// do not call getPower(t) unless isActive(t)!
+	if (TrackManager::getPower(t) == POWERMODE::ON) {
+	  oncount++;
+	  trackLetter[t] = t + 'A';
+	} else if (TrackManager::getPower(t) == POWERMODE::OFF) {
+	  offcount++;
+	  trackLetter[t] = t + 'a';
+	} else {
+	  trackLetter[t] = 'X';
+	}
+      } else {
+	trackLetter[t] = '_';
+      }
     }
-    if (prog) {
-      //reason = F("PROG");
-      broadcastReply(COMMAND_TYPE, F("<p1 PROG>\n"));
+    //DIAG(F("t=%d on=%d off=%d"), trackcount, oncount, offcount);
+
+    char state='2';
+    if (oncount==0 || offcount == trackcount) // none on or all active off
+      state = '0';
+    else if (oncount == numTracks) {          // all on, no inactive tracks
+      state = '1';
     }
-  }
+
+    if (state != '2')
+      broadcastReply(COMMAND_TYPE, F("<p%c>\n"),state);
+
+    // additional info about MAIN, PROG and JOIN
+    bool main=TrackManager::getMainPower()==POWERMODE::ON;
+    bool prog=TrackManager::getProgPower()==POWERMODE::ON;
+    bool join=TrackManager::isJoined();
+    //DIAG(F("m=%d p=%d j=%d"), main, prog, join);
+    const FSH * reason=F("");
+    if (join) {
+      reason = F(" JOIN"); // with space at start so we can append without space
+      broadcastReply(COMMAND_TYPE, F("<p1%S>\n"),reason);
+    } else {
+      if (main) {
+	//reason = F("MAIN");
+	broadcastReply(COMMAND_TYPE, F("<p1 MAIN>\n"));
+      }
+      if (prog) {
+	//reason = F("PROG");
+	broadcastReply(COMMAND_TYPE, F("<p1 PROG>\n"));
+      }
+    }
 #ifdef CD_HANDLE_RING
-  // send '1' if all main are on, otherwise global state (which in that case is '0' or '2')
-  broadcastReply(WITHROTTLE_TYPE, F("PPA%c\n"), main?'1': state);
+    // send '1' if all main are on, otherwise global state (which in that case is '0' or '2')
+    broadcastReply(WITHROTTLE_TYPE, F("PPA%c\n"), main?'1': state);
 #endif
-
-  LCD(2,F("Power %S%S"),state=='1'?F("On"): ( state=='0'? F("Off") : F("SC") ),reason);
+#if defined(HAS_ENOUGH_MEMORY)
+    LCD(2,F("PWR %s%S"),state=='1'? "On" : ( state=='0'? "Off" : trackLetter ),reason);
+#else
+    LCD(2,F("PWR %s%S"),trackLetter ,reason);
+#endif
+  }
 }
 
 void CommandDistributor::broadcastRaw(clientType type, char * msg) {

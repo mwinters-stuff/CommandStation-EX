@@ -170,7 +170,11 @@ bool WifiESP::setup(const char *SSid,
   uint8_t tries = 40;
   if (wifiUp)
     teardown();
-
+  if (strcmp("OFF", SSid) == 0) {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    return false; // debatable if that is true (success) or false (no network)
+  }
   //#ifdef SERIAL_BT_COMMANDS
   //return false;
   //#endif
@@ -273,9 +277,16 @@ bool WifiESP::setup(const char *SSid,
 #else
     WiFi.setSleep(false);
 #endif
+
+#ifdef WIFI_HIDE_SSID
+ const bool hiddenAP = true;
+#else
+ const bool hiddenAP = false;
+#endif
+
     if (WiFi.softAP(strSSID.c_str(),
 		    havePassword ? password : strPass.c_str(),
-		    channel, false, 8)) {
+		    channel, hiddenAP, 8)) {
       // DIAG(F("Wifi AP SSID %s PASS %s"),strSSID.c_str(),havePassword ? password : strPass.c_str());
       DIAG(F("Wifi in AP mode"));
       LCD(5, F("Wifi: %s"), strSSID.c_str());
@@ -417,12 +428,17 @@ void WifiESP::loop() {
         }
         // buffer filled, end with '\0' so we can use it as C string
 	buffer[wsHeaderLen+count]='\0';
-	if((unsigned int)clientId <= clients.size() && clients[clientId].active(clientId)) {
-	  if (Diag::WIFI) 
-         DIAG(F("SEND%S %d:%s"), useWebsocket?F("ws"):F(""),clientId, buffer+wsHeaderLen);
-	  clients[clientId].wifi.write(buffer,count+wsHeaderLen);
+	if((unsigned int)clientId <= clients.size()) {
+	  if (clients[clientId].active(clientId)) {
+	    if (Diag::WIFI)
+	      DIAG(F("SEND%S %d:%s"), useWebsocket?F("ws"):F(""),clientId, buffer+wsHeaderLen);
+	    clients[clientId].wifi.write(buffer,count+wsHeaderLen);
+	  } else {
+	    // existed but not active
+	    DIAG(F("Unsent(%d): %s"), clientId, buffer+wsHeaderLen);
+	  }
 	} else {
-	  DIAG(F("Unsent(%d): %s"), clientId, buffer+wsHeaderLen);
+	  DIAG(F("Non existent client %d has message: %s"), clientId, buffer+wsHeaderLen);
 	}
       }
     }
