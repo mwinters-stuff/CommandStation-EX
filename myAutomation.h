@@ -1,20 +1,35 @@
 #include "EXRAILMacros.h"
 
+// HM7000_826E, b90f634c
 ROSTER(5,"A4 William Whitehall",
-  "/F1 Background/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Slam Doors/F16 Firemans Breakfast/F17 Blowdown/*F18 Coal Pusher/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/F26 Creep Mode/F27 Apply Brake/F28 Auto Function Play"
+  "/F1 Sound ON-OFF/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector Valve/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Door Closed/F16 Firemans Breakfast/F17 Blowdown/*F18 Bell/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/*F26 Creep Mode/*F27 Apply Brake/F28 Auto Function Control"
 )
+
+// HM7000_0B45, fd7c1c3b
 ROSTER(6,"Green DB Schenker Class 08",
-  "/////F5 Shunting/F6 Creep/F7 Brake/F8 Push Control"
+  "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
+
+// HM7000_FBEB, 787ff47f
 ROSTER(7,"Duchess of Montrose",
-  "/F1 Background/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Slam Doors/F16 Firemans Breakfast/F17 Blowdown/*F18 Coal Pusher/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/F26 Creep Mode/F27 Apply Brake/F28 Auto Function Play"
+  "/F1 Sound ON-OFF/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector Valve/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Door Closed/F16 Firemans Breakfast/F17 Blowdown/*F18 Bell/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/*F26 Creep Mode/*F27 Apply Brake/F28 Auto Function Control"
 )
+
+// HM7000_08AE, e4a048bc
 ROSTER(8,"Red DB Schenker Class 08",
-  "/////F5 Shunting/F6 Creep/F7 Brake/F8 Push Control"
+  "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
+
+// HM7000_0B56, ad3c5681
 ROSTER(9,"Terrier",
-  "/////F5 Shunting/F6 Creep/F7 Brake/F8 Push Control"
+  "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
+
+// HM7000_929D, db00c17c
+ROSTER(10,"Class 37",
+  "F0 Day Light/F1 Engine Start/*F2 Horns 1/*F3 Horns 2/*F4 Brake Squeal/*F5 Diesel Notch Up/*F6 Diesel Notch Down/*F7 Idle/F8 Engine Thrash/F9 Diesel Cold Start/F10 Compressor/F11 Spirax Valve/F12 Cooling Fan/*F13 AWS Indicator/F14 Flange Squeal/*F15 Brake Release/*F16 Door Closed/*F17 AWS Indicator/F18 Diesel Primer/*F19 Guards Whistle/*F20 Wagons Clanking/F21 Day Light/F22 Rear Light/F23 Cabin Light/F24 Aux Lighting/F26 Shunting Mode/*F27 Creep Mode/*F28 Apply Brake/F29 Automated Function Control"
+)
+
 #ifdef ARDUINO_ARCH_ESP32
 ALIAS(SEQUENCE_STARTUP)
 
