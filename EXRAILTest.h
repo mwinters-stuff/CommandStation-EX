@@ -136,3 +136,146 @@ SEQUENCE(7500)
     AT(870)
     PRINT("870 set")
   DONE
+
+  ROUTE(7800, "ZTESTS")
+  PRINT("ZTESTS starting")
+  ZTEST("<t 3 5 1>",DCC::getLocoSpeedByte(3)==(128+6))
+  ZTEST("<t 3 5 0>",DCC::getLocoSpeedByte(3)==(6))
+  ZTEST("<-3>",DCC::getLocoSpeedByte(3)==(128))
+  
+  // speed up down and relative speed changes.
+  SETLOCO(3)
+  FWD(20)        ZTEST("FWD(20)",DCC::getLocoSpeedByte(3)==(128+20))
+  SPEEDUP(10)    ZTEST("SPEEDUP(10)",DCC::getLocoSpeedByte(3)==(128+30))
+  SPEED_REL(50)  ZTEST("SPEED_REL(50)",DCC::getLocoSpeedByte(3)==(128+15))
+  SPEED_REL(300) ZTEST("SPEED_REL(300)",DCC::getLocoSpeedByte(3)==(128+45))
+  SLOWDOWN(5)    ZTEST("SLOWDOWN(5)",DCC::getLocoSpeedByte(3)==(128+40))
+  DONE
+
+ROUTE(7900,"7900 Test IFSTASHED_HERE")
+   SETLOCO(4)  // set loco 4
+   STASH(200)  // stash loco 4 in stash 2
+    
+// loco is 4
+  IFSTASHED_HERE(100) // should be false
+      PRINT("FAIL Loco 4 in stash 100")
+  ELSE
+      PRINT("OK: loco 4 is not in stash 100")   
+  ENDIF
+
+SETLOCO(3)
+IFSTASHED_HERE(200) // should be false
+      PRINT("FAIL Loco 3 in stash 200")
+ELSE
+      PRINT("OK: loco 3 is not in stash 200")   
+ENDIF
+
+IFSTASHED_HERE(100) // should be true
+      PRINT("OK: Loco 3 is in stash 100")
+ELSE
+      PRINT("FAIL: loco 3 not in stash 100")
+ENDIF
+DONE
+
+ROUTE(8000,"8000 ESTOP_PAUSE test")
+   SETLOCO(3)  // set loco 3
+   FWD(20)    //
+   ESTOP_PAUSE
+   SETLOCO(0)  // prevent DONE stopping it
+   DONE
+ROUTE(8001,"8001 ESTOP_RESUME test")
+   ESTOP_RESUME
+   ZTEST("<D CABS>",DCC::getLocoSpeedByte(3)==(128+20))
+   DONE
+
+
+#define MYGROUP 1,2,3,4   
+ROUTE(1771,"1771 Test IFLOCO with multiple loco ids")
+  SETLOCO(3)
+  IFLOCO(MYGROUP) 
+    PRINT("IFLOCO 3 test passed")
+  ELSE
+    PRINT("IFLOCO 3 test failed")
+  ENDIF
+  IFLOCO(1,2,4, -1) 
+    PRINT("IFLOCO 1,2,4 test failed")
+  ELSE
+    PRINT("IFLOCO 1,2,4 test passed")
+  ENDIF
+
+  HAL(Bitmap,1700,10)
+  SET(1702) SET(1703) SET(1704)
+  
+  IF_ANY(1700,1701,1702) 
+    PRINT("IF_ANY 0,1,2 test OK")
+  ELSE
+    PRINT("IF_ANY 0,1,2 test failed")
+  ENDIF
+  
+  IF_ANY(1700,1701,1706) 
+    PRINT("IF_ANY 0,1,6 test failed")
+  ELSE
+    PRINT("IF_ANY 0,1,6 test passed")
+  ENDIF
+  
+  IF_ALL(1702,1703,1704) 
+    PRINT("IF_ALL 2,3,4 test OK")
+  ELSE
+    PRINT("IF_ALL 2,3,4 test failed")
+  ENDIF
+  
+  IF_ALL(1702,1703,1706) 
+    PRINT("IF_ALL 2,3,6 test failed")
+  ELSE
+    PRINT("IF_ALL 2,3,6 test passed")
+  ENDIF
+
+  IF_ANY(1701,-1706)
+    PRINT("IF_ANY 1,-1706 test passed")
+  ELSE
+    PRINT("IF_ANY 1,-1706 test failed")
+  ENDIF
+
+  IF_ALL(1701,-1706)
+    PRINT("IF_ALL 1,-1706 test failed")
+  ELSE
+    PRINT("IF_ALL 1,-1706 test passed")
+  ENDIF
+
+    DONE
+  
+
+
+// Speedometer example
+// Track is =TS1===TS2===TS3= timing between S2 and S3.
+
+ALIAS(TS1,181) ALIAS(TS2,182) ALIAS(TS3,183)
+STEALTH_GLOBAL(
+  byte testStartSpeed=2;
+  byte testEndSpeed=100;
+  byte testStep=10;
+  byte testSpeed;
+  unsigned long testStartTime;
+)
+
+AUTOMATION(9000,"Run Speed Test") // speed test setup
+  STEALTH(testSpeed=testStartSpeed;)
+  PRINT("Starting speed test")
+  REV(20) // reverse loco to start point
+
+SEQUENCE(9001)
+  // make sure loco is at start point
+  AT(TS1) ESTOP
+  // drive loco fwd at testSpeed 
+  STEALTH(DCC::setThrottle(loco,testSpeed,true);)
+  // At timing-start sensor(s2) record time
+  AT(TS2) STEALTH(testStartTime=millis();)
+ // at timing-end sensor(s3) stop and calculate and print speed
+ AT(TS3) ESTOP STEALTH(
+    StringFormatter::send(&USB_SERIAL, 
+       F("Speed %d Time %l\n"), testSpeed, millis()-testStartTime);
+    testSpeed+=testStep;
+    if (testSpeed>testEndSpeed) kill(); // test complete =DONE
+    )
+// Reverse back to start, and test again
+REV(127) FOLLOW(9001)

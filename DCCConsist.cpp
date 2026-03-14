@@ -13,7 +13,7 @@ bool DCCConsist::parse(Print * stream, byte params, int16_t p[]) {
                     cslot->isConsistReverse() ? F(" -%d") : F(" %d"),
                     cslot->getLoco());
               }                 
-              StringFormatter::send(stream,F(" >"));
+              StringFormatter::send(stream,F(" >\n"));
             }
           }
         return true;
@@ -49,6 +49,7 @@ bool DCCConsist::parse(Print * stream, byte params, int16_t p[]) {
     }
     
     auto leadLoco=LocoSlot::getSlot(abs(p[0]),true);
+    leadLoco->setConsistReverse(p[0]<0);
     LocoSlot *  prev=leadLoco;
     for (byte i=1;i<params;i++) {
         auto slot=LocoSlot::getSlot(abs(p[i]),true);

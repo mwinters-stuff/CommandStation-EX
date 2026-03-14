@@ -65,6 +65,8 @@
 #undef ENDTASK
 #undef ESTOP
 #undef ESTOPALL
+#undef ESTOP_PAUSE
+#undef ESTOP_RESUME
 #undef EXRAIL
 #undef EXTT_TURNTABLE
 #undef FADE
@@ -80,6 +82,8 @@
 #undef HAL
 #undef HAL_IGNORE_DEFAULTS
 #undef IF 
+#undef IF_ALL
+#undef IF_ANY
 #undef IFAMBER
 #undef IFCLOSED
 #undef IFGREEN
@@ -149,7 +153,16 @@
 #undef PARSE
 #undef PAUSE
 #undef PICKUP_STASH
-#undef PIN_TURNOUT 
+#undef PIN_TURNOUT
+#undef PLAY_EQ
+#undef PLAY_FOLDER
+#undef PLAY_PAUSE
+#undef PLAY_REPEAT
+#undef PLAY_RESET
+#undef PLAY_RESUME
+#undef PLAY_STOP
+#undef PLAY_TRACK
+#undef PLAY_VOLUME
 #undef PRINT
 #undef POM
 #undef POWEROFF
@@ -194,7 +207,10 @@
 #undef SETFREQ
 #undef SIGNAL 
 #undef SIGNALH 
-#undef SPEED 
+#undef SPEED
+#undef SPEEDUP
+#undef SPEED_REL
+#undef SLOWDOWN
 #undef START
 #undef START_SHARED
 #undef START_SEND
@@ -230,6 +246,9 @@
 #undef XFWD
 #undef XSAVE_SPEED
 #undef XRESTORE_SPEED
+#undef ZTEST
+#undef ZTEST2
+#undef ZTEST3
 
 #ifndef RMFT2_UNDEF_ONLY
 #include "EXRAIL2MacroBase.h"

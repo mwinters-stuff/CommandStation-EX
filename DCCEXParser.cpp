@@ -94,7 +94,7 @@ Once a new OPCODE is decided upon, update this list.
   W, Write CV
   x,
   X, Invalid command response
-  y, 
+  y, Output Sound
   Y, Output broadcast
   z, Direct output
   Z, Output configuration/control
@@ -490,6 +490,10 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
         }
         break; 
 
+    case 'y': // OUTPUT SOUND <y ...>
+        if (parsey(stream, params, p))
+            return;
+        break;
     case 'Z': // OUTPUT <Z ...>
         if (parseZ(stream, params, p))
             return;
@@ -692,8 +696,13 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
 	  return;
 	}
 
-    case '!': // ESTOP ALL  <!>
-        DCC::estopAll(); // this broadcasts speed 1(estop) and sets all reminders to speed 1.
+    case '!': // ESTOPALL  <!>
+        if (p[0]=="P"_hk) DCC::estopLock(true); // <!P>
+        else if (p[0]=="R"_hk) DCC::estopLock(false); // <!R
+        else if (p[0]=="Q"_hk) StringFormatter::send(stream, 
+                  DCC::isEstopLocked() ? F("<!PAUSED>\n"): F("<!RESUMED>\n")); // <!Q>
+        
+        else DCC::estopAll(); // this broadcasts speed 1(estop) and sets all reminders to speed 1.
         return;
 
 #ifdef HAS_ENOUGH_MEMORY
@@ -1041,6 +1050,91 @@ bool DCCEXParser::parseZ(Print *stream, int16_t params, int16_t p[])
     }
 }
 
+#include "IO_DFPlayerBase.h"
+
+bool DCCEXParser::parsey(Print *stream, int16_t params, int16_t p[])
+{
+    (void)stream; // unused parameter
+     
+    // <y vpin PLAY track [volume]>
+    // <y vpin REPEAT track [volume]>
+    // <y vpin FOLDER folder>
+    // <y vpin STOP>
+    // <y vpin VOL volume>
+    // <y vpin PAUSE>
+    // <y vpin RESUME>
+    // <y vpin EQ eq>
+    // <y vpin RESET>
+    
+    if (params<2) return false;
+
+    int16_t v1=0;
+    uint8_t v2=0;
+    uint16_t cmd=0; 
+
+    
+
+    switch (p[1])
+    {
+      case "PLAY"_hk:
+        if (params<3) return false;
+        v1=p[2]; // track
+        cmd=DFPlayerBase::DF_PLAY;
+        if (params>=4) v2=p[3]; // volume
+        break;
+    
+      case "REPEAT"_hk:
+        if (params<3) return false;
+        v1=p[2]; // track
+        cmd=DFPlayerBase::DF_REPEATPLAY;
+        if (params>=4) v2=p[3]; // volume
+        break;
+      
+      case "FOLDER"_hk:
+        if (params!=3) return false;
+        v2=p[2]; // folder
+        cmd=DFPlayerBase::DF_FOLDER;
+        break;
+
+      case "STOP"_hk:
+        if (params!=2) return false;
+        cmd=DFPlayerBase::DF_STOPPLAY;
+        break;
+
+      case "PAUSE"_hk:
+        if (params!=2) return false;
+        cmd=DFPlayerBase::DF_PAUSE;
+        break;
+
+      case "RESUME"_hk:
+        if (params!=2) return false;
+        cmd=DFPlayerBase::DF_RESUME;
+        break;
+
+      case "RESET"_hk:
+        if (params!=2) return false;
+        cmd=DFPlayerBase::DF_RESET;
+        break;
+
+      case "VOL"_hk:
+        if (params!=3) return false;
+        cmd=DFPlayerBase::DF_VOL;
+        v2=p[2]; // volume
+        break;
+    
+      case "EQ"_hk:
+        if (params!=3) return false;
+        cmd=DFPlayerBase::DF_EQ;
+        v2=p[2]; // EQ type
+        break;
+        
+      default:
+        return false;
+    }
+    IODevice::writeAnalogue((VPIN)p[0],v1,v2,cmd);
+    return true;
+}
+
 //===================================
 bool DCCEXParser::parsef(Print *stream, int16_t params, int16_t p[])
 {
@@ -1212,15 +1306,10 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
         {   // <C RAILCOM ON|OFF|DEBUG >
             if (params<2) return false;
             bool on=false;
-            bool debug=false;
             switch (p[1]) {
                 case "ON"_hk:
                 case 1:
                     on=true;
-                    break;
-                case "DEBUG"_hk:
-                    on=true;
-                    debug=true;
                     break;
                 case "OFF"_hk:
                 case 0:
@@ -1229,7 +1318,7 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
                  return false;
             }              
         DIAG(F("Railcom %S")
-            ,DCCWaveform::setRailcom(on,debug)?F("ON"):F("OFF"));
+            ,DCCWaveform::setRailcom(on)?F("ON"):F("OFF"));
         return true;     
         }
 #endif
@@ -1338,8 +1427,10 @@ bool DCCEXParser::parseD(Print *stream, int16_t params, int16_t p[])
 
 #if !defined(IO_NO_HAL)
     case "HAL"_hk: 
-        if (p[1] == "SHOW"_hk) 
+        if (p[1] == "SHOW"_hk) {
+          I2CManager.scanForDevices(&USB_SERIAL);
           IODevice::DumpAll();
+        }
         else if (p[1] == "RESET"_hk)
           IODevice::reset();
         return true;

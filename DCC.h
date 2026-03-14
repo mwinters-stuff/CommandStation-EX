@@ -52,6 +52,9 @@ public:
   // Public DCC API functions
   static bool setThrottle(uint16_t cab, uint8_t tSpeed, bool tDirection);
   static void estopAll();
+  static void estopLock(bool lock);
+  static bool isEstopLocked();
+
   static int8_t getThrottleSpeed(int cab);
   static uint8_t getThrottleSpeedByte(int cab);
   static uint8_t getLocoSpeedByte(int cab); // may lag throttle 
@@ -80,8 +83,6 @@ public:
   static void verifyCVByte(int16_t cv, byte byteValue, ACK_CALLBACK callback);
   static void verifyCVBit(int16_t cv, byte bitNum, bool bitValue, ACK_CALLBACK callback);
   static bool setTime(uint16_t minutes,uint8_t speed, bool suddenChange);
-  static void setLocoInBlock(uint16_t loco, uint16_t blockid, bool exclusive);
-  static void clearBlock(uint16_t blockid);
   static void getDriveawayLocoId(ACK_CALLBACK callback);
   static void getLocoId(ACK_CALLBACK callback);
   static void getConsistId(ACK_CALLBACK callback);
@@ -115,13 +116,13 @@ private:
   static byte defaultMomentumA;  // Accelerating
   static byte defaultMomentumD;  // Accelerating
   static void setThrottle2(LocoSlot * slot, uint8_t speedCode);
-  static void setThrottleDCC(uint16_t cab, uint8_t speedCode);
+  static void setThrottleDCC(LocoSlot * slot, uint8_t speedCode);
   static void setFunctionInternal(int cab, byte group, byte fByte, byte eByte);
   static bool issueReminder(LocoSlot  * slot);
   static LocoSlot * nextLocoReminder;
   static FSH *shieldName;
   static byte globalSpeedsteps;
-
+  static bool estopIsLocked;
   static void issueReminders();
   static void callback(int value);
 

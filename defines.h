@@ -44,7 +44,7 @@
 #define HAS_ENOUGH_MEMORY
 #undef USB_SERIAL     // Teensy has this defined by default...
 #define USB_SERIAL Serial
-
+#define USB_SERIAL_WEB 
 // Include extended addresses unless specifically excluded
 #define I2C_EXTENDED_ADDRESS
 
@@ -137,6 +137,10 @@
   #ifndef DISABLE_EEPROM
   #define DISABLE_EEPROM
   #endif
+  #if ENABLE_WIFI
+   #define ENABLE_SERIAL_LOG
+   #endif
+
 #elif defined(ARDUINO_ARCH_SAMD)
   #define ARDUINO_TYPE "SAMD21"
   #undef USB_SERIAL
@@ -151,6 +155,11 @@
   #ifndef DISABLE_EEPROM
     #define DISABLE_EEPROM
   #endif
+  #if ENABLE_ETHERNET
+    // WAITING FOR STM32 ETHERNET SUPPORT FIX
+    // #define ENABLE_SERIAL_LOG
+  #endif
+
   // STM32 support for native I2C is awaiting development 
   // #ifndef I2C_USE_WIRE
   // #define I2C_USE_WIRE
@@ -220,6 +229,14 @@
 // Currently only devices which can communicate at 115200 are supported.
 //
 #define WIFI_SERIAL_LINK_SPEED 115200
+
+// configure serial log browser feature if possible
+#ifdef ENABLE_SERIAL_LOG
+    // Replace USB_SERIAL with SerialLog so we can browse it!
+    #undef USB_SERIAL
+    #include "SerialUsbLog.h"
+    #define USB_SERIAL SerialLog
+  #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 //
@@ -295,7 +312,11 @@
 
 // Default WIFI_HOSTNAME if not found in config.h
 #ifndef WIFI_HOSTNAME
-    #define WIFI_HOSTNAME ""
+    #define WIFI_HOSTNAME "DCC-EX"
+#endif
+// Default ETHERNET_HOSTNAME to WIFI_HOSTNAME if not found in config.h (for old EXinstaller compatibility)
+#ifndef ETHERNET_HOSTNAME
+    #define ETHERNET_HOSTNAME WIFI_HOSTNAME
 #endif
 
 

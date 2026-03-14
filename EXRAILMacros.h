@@ -49,7 +49,7 @@
 // can be called to emit a list of routes/automatuions in a form suitable for Withrottle. 
  
 // PRINT(msg), LCD(row,msg) and SCREEN(display,row,msg) are implemented in a separate pass to create 
-// a getMessageText(id) function.  
+// a getMessageText(id) function. (also now IFLOCO).
 
 // CAUTION: The macros below are multiple passed over myAutomation.h
 
@@ -61,9 +61,9 @@
 // helper macro for turnout description as HIDDEN 
 #define HIDDEN "\x01"
 
-// PLAYSOUND is alias of ANOUT to make the user experience of a Conductor beter for
-// playing sounds with IO_I2CDFPlayer
-#define PLAYSOUND ANOUT
+// PLAYSOUND is deprecated and appears here temporarily so it does not get 
+// extracted into the documentation. 
+#define PLAYSOUND(vpin,v1,v2,code) ANOUT(vpin,v1,v2,DFPLayerBase::code)
 
 // SEG7 is a helper to create ANOUT from a 7-segment request
 #define SEG7(vpin,value,format) \
@@ -301,6 +301,36 @@ case (__COUNTER__ - StringMacroTracker1) : {\
 #define SERIAL5(msg)  THRUNGE(msg,thrunge_serial5)
 #undef SERIAL6
 #define SERIAL6(msg)  THRUNGE(msg,thrunge_serial6)
+#undef IFLOCO
+#define IFLOCO(locolist...) \
+  case (__COUNTER__ - StringMacroTracker1) : \
+  { \
+   const int16_t temp[]={locolist}; \
+   skipIf=true; \
+   for (size_t i=0; i<sizeof(temp)/sizeof(temp[0]); i++) { \
+      if (loco==(uint16_t)temp[i]) { skipIf=false; break;} \
+    } \
+    return;\
+  }
+
+#undef IF_ALL
+#define IF_ALL(vpinList...) \
+  case (__COUNTER__ - StringMacroTracker1) : \
+  { \
+   const int16_t temp[]={vpinList}; \
+   ifAllFunc(temp,sizeof(temp)/sizeof(temp[0])); \
+   return;\
+  }
+
+#undef IF_ANY  
+#define IF_ANY(vpinList...) \
+  case (__COUNTER__ - StringMacroTracker1) : \
+  { \
+   const int16_t temp[]={vpinList}; \
+   ifAnyFunc(temp,sizeof(temp)/sizeof(temp[0])); \
+   return;\
+  }
+
 #undef LCD
 #define LCD(id,msg)  \
      case (__COUNTER__ - StringMacroTracker1) : {\
@@ -323,6 +353,20 @@ case (__COUNTER__ - StringMacroTracker1) : {\
 #define STEALTH(code...) case (__COUNTER__ - StringMacroTracker1) : {code} return; 
 #undef WITHROTTLE
 #define WITHROTTLE(msg) THRUNGE(msg,thrunge_withrottle)
+#undef ZTEST
+#define ZTEST(command,code...) case (__COUNTER__ - StringMacroTracker1) : \
+   Ztest::parse(F(command),nullptr,[]() -> bool { return (code);}); \
+   return;
+#undef ZTEST2
+#define ZTEST2(command,response) case (__COUNTER__ - StringMacroTracker1) : \
+   Ztest::parse(F(command),F(response),nullptr); \
+   return;
+#undef ZTEST3
+#define ZTEST3(command,response,code...) case (__COUNTER__ - StringMacroTracker1) : \
+   Ztest::parse(F(command),F(response),[]() -> bool { return (code);}); \
+   return;
+
+#include "Ztest.h"
 
 void  RMFT2::printMessage(uint16_t id) { 
   thrunger tmode;
@@ -512,7 +556,9 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define ENDIF  OPCODE_ENDIF,0,0,
 #define ENDTASK OPCODE_ENDTASK,0,0,
 #define ESTOP OPCODE_SPEED,V(1), 
-#define ESTOPALL OPCODE_ESTOPALL,0,0, 
+#define ESTOPALL OPCODE_ESTOPALL,V(0),
+#define ESTOP_PAUSE OPCODE_ESTOPALL,V(1),
+#define ESTOP_RESUME OPCODE_ESTOPALL,V(2),
 #define EXRAIL
 #ifndef IO_NO_HAL
 #define EXTT_TURNTABLE(id,vpin,home,description...) OPCODE_EXTTTURNTABLE,V(id),OPCODE_PAD,V(vpin),OPCODE_PAD,V(home),
@@ -534,7 +580,9 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define IFCLOSED(turnout_id) OPCODE_IFCLOSED,V(turnout_id),
 #define IFGREEN(signal_id) OPCODE_IFGREEN,V(signal_id),
 #define IFGTE(sensor_id,value) OPCODE_IFGTE,V(sensor_id),OPCODE_PAD,V(value),
-#define IFLOCO(loco_id) OPCODE_IFLOCO,V(loco_id),
+#define IFLOCO(loco_list...) OPCODE_IFLOCO,V(__COUNTER__ - StringMacroTracker2),
+#define IF_ALL(vpinlist...) OPCODE_IFLOCO,V(__COUNTER__ - StringMacroTracker2),
+#define IF_ANY(vpinlist...) OPCODE_IFLOCO,V(__COUNTER__ - StringMacroTracker2),
 #define IFLT(sensor_id,value) OPCODE_IFLT,V(sensor_id),OPCODE_PAD,V(value),
 #define IFNOT(sensor_id) OPCODE_IFNOT,V(sensor_id),
 #define IFRANDOM(percent) OPCODE_IFRANDOM,V(percent),
@@ -614,6 +662,15 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define PAUSE OPCODE_PAUSE,0,0,
 #define PICKUP_STASH(id) OPCODE_PICKUP_STASH,V(id),
 #define PIN_TURNOUT(id,pin,description...) OPCODE_PINTURNOUT,V(id),OPCODE_PAD,V(pin),
+#define PLAY_EQ(vpin,eqname)               ANOUT(vpin,0,DFPlayerBase::DF_EQ_##eqname,DFPlayerBase::DF_EQ)
+#define PLAY_FOLDER(vpin,folder)           ANOUT(vpin,0,folder,DFPlayerBase::DF_FOLDER)
+#define PLAY_PAUSE(vpin)                   ANOUT(vpin,0,0,DFPlayerBase::DF_PAUSE)
+#define PLAY_REPEAT(vpin,track,volume...)  ANOUT(vpin,track,volume+0,DFPlayerBase::DF_REPEATPLAY)
+#define PLAY_RESET(vpin)                   ANOUT(vpin,0,0,DFPlayerBase::DF_RESET)
+#define PLAY_RESUME(vpin)                  ANOUT(vpin,0,0,DFPlayerBase::DF_RESUME)
+#define PLAY_STOP(vpin)                    ANOUT(vpin,0,0,DFPlayerBase::DF_STOPPLAY)
+#define PLAY_TRACK(vpin,track,volume...)   ANOUT(vpin,track,volume+0,DFPlayerBase::DF_PLAY) 
+#define PLAY_VOLUME(vpin,volume)           ANOUT(vpin,0,volume,DFPlayerBase::DF_VOL)
 #define POM(cv,value) OPCODE_POM,V(cv),OPCODE_PAD,V(value),
 #define POWEROFF OPCODE_POWEROFF,0,0,
 #define POWERON OPCODE_POWERON,0,0,
@@ -666,6 +723,9 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define SIGNAL(redpin,amberpin,greenpin) 
 #define SIGNALH(redpin,amberpin,greenpin) 
 #define SPEED(speed) OPCODE_SPEED,V(speed),
+#define SPEEDUP(speedstep) OPCODE_SPEEDUP,V(speedstep),
+#define SPEED_REL(percent) OPCODE_SPEED_REL,V(percent),
+#define SLOWDOWN(speedstep) OPCODE_SLOWDOWN,V(speedstep),
 #define START(route) OPCODE_START,V(route), 
 #define START_SHARED(route) OPCODE_START_SHARED,V(route),
 #define START_SEND(route) OPCODE_START_SEND,V(route),
@@ -701,6 +761,9 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
 #define XPOM(cab,cv,value) OPCODE_XPOM,V(cab),OPCODE_PAD,V(cv),OPCODE_PAD,V(value),
 #define XSAVE_SPEED(cab) OPCODE_XSAVE_SPEED,V(cab),
 #define XRESTORE_SPEED(cab) OPCODE_XRESTORE_SPEED,V(cab),
+#define ZTEST(command,code...) PRINT(dummy)
+#define ZTEST2(command,response) PRINT(dummy)
+#define ZTEST3(command,response,code...) PRINT(dummy)
 
 // Build RouteCode
 const int StringMacroTracker2=__COUNTER__;

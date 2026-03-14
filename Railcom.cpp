@@ -18,15 +18,32 @@
  *  along with CommandStation.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
+ /*
+ This class acts as a 3 way coordinator between
+  - the DCC waveform cutout generator,
+  - the incoming railcom collector notifications
+  - and the EXRAIL2 block enter/exit system   
+  */
 #include "Railcom.h"
 #include "DCC.h"
 #include "DCCWaveform.h"
+#include "EXRAIL2.h"
 
 uint16_t Railcom::expectLoco=0;
+uint16_t Railcom::nextLoco=0;
+
 uint16_t Railcom::expectCV=0;
 unsigned long Railcom::expectWait=0;
 ACK_CALLBACK Railcom::expectCallback=0;
 
+enum ResponseType: byte { 
+        ENTER_BLOCK=0x00,  // loco entering block, block id and loco id follow
+        EXIT_BLOCK=0x80,   // loco exiting block, block id and loco id follow
+        CV_VALUE=0x40,     // cv value read from a POM, cv value follow
+        CV_VALUE_LIST=0xC0, // list of cv values read from a POM, cv id and 4 values follow
+    };
+  
 // anticipate is used when waiting for a CV read from a railcom loco
 void Railcom::anticipate(uint16_t loco, uint16_t cv, ACK_CALLBACK callback) { 
     expectLoco=loco;
@@ -42,31 +59,34 @@ void Railcom::process(int16_t firstVpin,byte * buffer, byte length) {
     byte i=0; 
     while (i<length) {
         byte block=buffer[i] & 0x3f;
-        byte type=buffer[i]>>6;
-
+        (void)block; // avoid compiler warning if not using EXRAIL
+        byte type=buffer[i] & 0xc0;
+        
         switch (type) {
             // a type=0 record has block,locohi,locolow
-            case 0: {
+            case ENTER_BLOCK:
+            case EXIT_BLOCK:
+             {
+                #ifdef EXRAIL_ACTIVE
                 uint16_t locoid= ((uint16_t)buffer[i+1])<<8 | ((uint16_t)buffer[i+2]);
-                DIAG(F("RC3 b=%d l=%d"),block,locoid);
-        
-                if (locoid==0) DCC::clearBlock(firstVpin+block);
-                else DCC::setLocoInBlock(locoid,firstVpin+block,true);
+                RMFT2::blockEvent(firstVpin+block,locoid,type==ENTER_BLOCK);
+                #endif
                 i+=3;
             }
             break;
-       case 2: { // csv value from POM read
-            byte value=buffer[i+1];
-            if (expectCV && DCCWaveform::getRailcomLastLocoAddress()==expectLoco) {
-                DCC::setLocoInBlock(expectLoco,firstVpin+block,false);
-                if (expectCallback) expectCallback(value);
-                expectCV=0;
+       case CV_VALUE: 
+            { // loco cv and value from POM read
+              uint16_t locoid= ((uint16_t)buffer[i+1])<<8 | ((uint16_t)buffer[i+2]);
+              uint16_t cv=(buffer[i+3]<<8) | buffer[i+4];
+              byte value=buffer[i+5];
+              DIAG(F("POM Read loco=%d cv=%d value=%d"),locoid,cv,value);
+              if (expectCallback) expectCallback(value);
+              expectCallback=0;
+              i+=6;
             }
-            i+=2;
-        }
          break;
          default:
-          DIAG(F("Unknown RC Collector code %d"),type);
+          DIAG(F("Unknown RC Collector code 0x%x"),type);
           return;
         }
       }
@@ -75,8 +95,13 @@ void Railcom::process(int16_t firstVpin,byte * buffer, byte length) {
 
 // loop() is called to detect timeouts waiting for a POM read result
 void Railcom::loop() {
-    if (expectCV && (millis()-expectWait)> POM_READ_TIMEOUT) { // still waiting 
+    if (expectCallback && (millis()-expectWait)> POM_READ_TIMEOUT) { // still waiting 
                 expectCallback(-1);
-                expectCV=0;
+                expectCallback=0;
     }
 }
+
+byte Railcom::cutoutCounter=0;
+void Railcom::incCutout() {cutoutCounter++;};
+byte Railcom::getCutout() {return cutoutCounter;};
+ 

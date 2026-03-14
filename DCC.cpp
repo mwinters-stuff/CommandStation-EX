@@ -5,7 +5,7 @@
  *  © 2021 Herb Morton
  *  © 2020-2022 Harald Barth
  *  © 2020-2021 M Steve Todd
- *  © 2020-2025 Chris Harlow
+ *  © 2020-2026 Chris Harlow
  *  All rights reserved.
  *
  *  This file is part of DCC-EX
@@ -128,7 +128,7 @@ bool DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
   } 
   else {  // Momentum not involved, throttle now.
     setThrottle2(slot,speedCode);
-    TrackManager::setDCSignal(cab,speedCode); // in case this is a dcc track on this addr
+    if (!estopIsLocked) TrackManager::setDCSignal(cab,speedCode); // in case this is a dcc track on this addr
   }
   CommandDistributor::broadcastLoco(slot);
   return true;
@@ -136,21 +136,26 @@ bool DCC::setThrottle( uint16_t cab, uint8_t tSpeed, bool tDirection)  {
 
 // set speedCode directly to DCC and make followers same
 void DCC::setThrottle2( LocoSlot * slot, byte speedCode)  {
-  slot->setSpeedCode(speedCode);
-  setThrottleDCC(slot->getLoco(), speedCode);
-  for (auto follower=slot->getConsistNext(); follower; follower=follower->getConsistNext()) {
-    byte followSpeed=speedCode ^ (follower->isConsistReverse() ? 0x80 : 0);
-    follower->setSpeedCode(followSpeed);
-    setThrottleDCC(follower->getLoco(), followSpeed);
+  for (auto follower=slot; follower; follower=follower->getConsistNext()) {
+    follower->setSpeedCode(speedCode);
+    setThrottleDCC(follower,speedCode);
   } 
 }
 
-void DCC::setThrottleDCC( uint16_t cab, byte speedCode)  {
-
+void DCC::setThrottleDCC( LocoSlot * slot, byte speedCode)  {
+  uint16_t cab=0;
+  if (slot) {
+    cab=slot->getLoco();
+    if (slot->isConsistReverse()) speedCode^=0x80;
+  }
+  // any throttle traffic is blocked when estop is locked
+  if (estopIsLocked) {
+    cab=0;
+    speedCode = 1;
+  }
   uint8_t b[4];
   uint8_t nB = 0;
   // DIAG(F("setSpeedInternal %d %x"),cab,speedCode);
-
   if (cab > HIGHEST_SHORT_ADDR)
     b[nB++] = highByte(cab) | 0xC0;    // convert train number into a two-byte address
   b[nB++] = lowByte(cab);
@@ -418,8 +423,8 @@ preamble -0- 1 0 A7 A6 A5 A4 A3 A2 -0- 0 ^A10 ^A9 ^A8 0 A1 A0 1 -0- ....
 
 Thus in byte packet form the format is 10AAAAAA, 0AAA0AA1, 000XXXXX
 
-Die Adresse f�r den ersten erweiterten Zubeh�rdecoder ist wie bei den einfachen
-Zubeh�rdecodern die Adresse 4 = 1000-0001 0111-0001 . Diese Adresse wird in
+Die Adresse für den ersten erweiterten Zubehördecoder ist wie bei den einfachen
+Zubehördecodern die Adresse 4 = 1000-0001 0111-0001 . Diese Adresse wird in
 Anwenderdialogen als Adresse 1 dargestellt.
 
 This means that the first address shown to the user as "1" is mapped
@@ -483,7 +488,7 @@ void DCC::readCVByteMain(int cab, int cv, ACK_CALLBACK callback)  {
   b[nB++] = cv2(cv);
   b[nB++] = 0;
 
-  DCCQueue::scheduleDCCPacket(b, nB, 4,cab);
+  DCCQueue::scheduleDCCPacket(b, nB, 2,cab);
   Railcom::anticipate(cab,cv,callback);
 }
 
@@ -986,10 +991,10 @@ void DCC::setConsistId(int id,bool reverse,ACK_CALLBACK callback) {
 }
 
 void DCC::forgetLoco(int cab) {  // removes any speed reminders for this loco
-  setThrottleDCC(cab,1); // ESTOP this loco if still on track
   auto slot=LocoSlot::getSlot(cab, false);
   if (slot) {
-    if (nextLocoReminder==slot) nextLocoReminder=slot->getNext(); // move on if we are about to forget this one
+     setThrottleDCC(slot,1); // ESTOP this loco if still on track
+     if (nextLocoReminder==slot) nextLocoReminder=slot->getNext(); // move on if we are about to forget this one
     if (slot->isConsistLead() || slot->isConsistFollower()) 
       DCCConsist::deleteAnyConsist(cab); // unchain any consist
     slot->forget(); // no longer used but not end of world
@@ -997,7 +1002,7 @@ void DCC::forgetLoco(int cab) {  // removes any speed reminders for this loco
   }
 }
 void DCC::forgetAllLocos() {  // removes all speed reminders
-  setThrottleDCC(0,1); // ESTOP all locos still on track
+  setThrottleDCC(nullptr,1); // ESTOP all locos still on track
   SLOTLOOP {
      CommandDistributor::broadcastForgetLoco(slot->getLoco());
   }
@@ -1101,7 +1106,7 @@ bool DCC::issueReminder(LocoSlot * slot) {
               sc=dccalize(current);
               //DIAG(F("c=%d newsc=%d"),current,sc);
               slot->setSpeedCode(sc);
-              TrackManager::setDCSignal(loco,sc); // in case this is a dcc track on this addr
+              if (!estopIsLocked) TrackManager::setDCSignal(loco,sc); // in case this is a dcc track on this addr
               slot->setMomentumBase(now);  
             }
           }
@@ -1182,9 +1187,21 @@ bool DCC::setMomentum(int locoId,int16_t accelerating, int16_t decelerating) {
   return true; 
 }
 
+// ESTOP functions:
+// estopAll() - estop all locos (broadcast dcc) and set their reminders
+//              to speed 0 with their current direction preserved.
+//              Throttles will be told, but can immediately start driving again.
+// estopLock(true) - estop all locos (broadcast dcc) and lock the estop state. 
+//              While locked, no loco can be moved because any throttle packets will
+//              be blocked at the DCC/DC level and replaced by the estop broadcast packet.
+//              Reminders are unchanged so retain the original speed/direction ready for the restart.
+//              Throttles will show original speed and can be changed to affect the speed that
+//              will be used when the estop is unlocked. 
+// estopLock(false) - unlocks the estop state and all locos will resume their 
+//              previous (or changed since locking) speeds as the reminder loop continues.
 
 void  DCC::estopAll() {
-  setThrottleDCC(0,1); // estop all locos
+  setThrottleDCC(nullptr,1); // estop all locos
   TrackManager::setDCSignal(0,1); 
     
   // remind stop/estop but dont change direction
@@ -1196,6 +1213,23 @@ void  DCC::estopAll() {
   }
 }
 
+bool DCC::estopIsLocked=false;
+
+bool DCC::isEstopLocked() {
+  return estopIsLocked;
+}
+
+void DCC::estopLock( bool lock) {
+  // see notes above about estop functions. 
+  if (estopIsLocked==lock) return; // no change
+  estopIsLocked=lock;
+  if (lock) {
+    setThrottleDCC(nullptr, 1); // broadcast estop to DCC
+    TrackManager::setDCSignal(0, 1); // stop DC signal on all tracks
+  }
+  CommandDistributor::broadcastEstopLock(estopIsLocked); // tell throttle users
+}
+
 
 LocoSlot  *  DCC::nextLocoReminder = nullptr;
 
@@ -1204,48 +1238,4 @@ void DCC::displayCabList(Print * stream) {
     LocoSlot::dumpTable(stream);
      StringFormatter::send(stream,F("<* Default momentum=%d/%d *>\n"),
               DCC::defaultMomentumA,DCC::defaultMomentumD);
-}
-
-void DCC::setLocoInBlock(uint16_t loco, uint16_t blockid, bool exclusive) {
-  // avoid unused warnings when EXRAIL not active
-  (void)loco; (void)blockid; (void)exclusive;
-  
-  // update block loco is in, tell exrail leaving old block, and entering new.
-
-  // NOTE: The loco table scanning is really inefficient and needs rewriting
-  //   This was done once in the momentum poc.  
-  #ifdef EXRAIL_ACTIVE
-  auto slot=LocoSlot::getSlot(loco,true);
-  if (!slot) return; // loco not known, nothing to do
-  
-  auto oldBlock=slot->getBlockOccupied(); 
-  if (oldBlock==blockid) return; 
-  if (oldBlock) RMFT2::blockEvent(oldBlock,loco,false);
-  slot->setBlockOccupied(blockid);
-  if (blockid) RMFT2::blockEvent(blockid,loco,true);
-
-  if (exclusive) {
-    SLOTLOOP {
-          if (slot->getLoco()!=loco &&  slot->getBlockOccupied()==blockid) {
-            RMFT2::blockEvent(blockid,slot->getLoco(),false);
-            slot->setBlockOccupied(0);
-          }
-      }
-    }
-  
-  #endif 
-}
-
-void DCC::clearBlock(uint16_t blockid) {
-  (void)blockid; // avoid unused warning when EXRAIL not active
-  // clear block occupied by loco, tell exrail about all leavers
-  #ifdef EXRAIL_ACTIVE
-  SLOTLOOP {
-       
-        if (slot->getBlockOccupied()==blockid) {
-        RMFT2::blockEvent(blockid,slot->getLoco(),false);
-        slot->setBlockOccupied(0);
-        }
-      }
-  #endif
 }

@@ -207,6 +207,12 @@
 #define ESTOPALL
 ///brief Performs emergency stop on all locos
 
+#define ESTOP_PAUSE
+///brief Emergency stop, and preventing all movement until resumed
+
+#define ESTOP_RESUME
+///brief Resumes loco speeds after ESTOP_PAUSE
+
 #define EXRAIL
 ///brief obsolete.. no longer needed. Does nothing.
 
@@ -266,6 +272,14 @@
 ///brief Checks sensor state, If false jumps to matching nested ELSE or ENDIF
 ///param vpin  VPIN of sensor. Negative VPIN will invert sensor state.
 
+#define IF_ALL(vpinList...)
+///brief Checks sensor state, If any are false, it jumps to matching nested ELSE or ENDIF
+///param vpinlist  comma separated list of VPINs of sensors. Negative VPIN will invert sensor state.
+
+#define IF_ANY(vpinList...)
+///brief Checks sensor state, If all are false jumps to matching nested ELSE or ENDIF
+///param vpinlist  comma separated list of VPINs of sensors. Negative VPIN will invert sensor state.
+
 #define IFAMBER(signal_id)
 ///brief Checks if signal is in AMBER state.
 ///see IF
@@ -282,8 +296,8 @@
 ///brief Checks if analog vpin sensor >= value
 ///see IF
 
-#define IFLOCO(loco_id)
-///brief Checks if current task loco = loco_id
+#define IFLOCO(loco_id_list...)
+///brief Checks if current task loco is in the list of loco ids. List may be comma separated values
 ///see IF
 
 #define IFLT(vpin,value)
@@ -535,6 +549,42 @@
 ///brief Loads stashed value into current task loco
 ///param stash_id position in stash where a loco id was previously saved.
 
+#define PLAY_EQ(vpin,eqname)
+///brief Sets EQ setting on DFPlayer module
+///param eqname One of: NORMAL,POP,ROCK,JAZZ,CLASSIC,BASS
+
+#define PLAY_FOLDER(vpin,folder)
+///brief Sets DFPlayer folder to use for tracks 
+///param folder number
+
+#define PLAY_PAUSE(vpin)
+///brief Pauses sound play
+///see PLAY_RESUME
+
+#define PLAY_REPEAT(vpin,track,volume...)
+///brief Plays a track on a DFPlayer module on repoeat
+///param track number
+///param volume... optional volume 0-30 or use default set below
+
+#define PLAY_RESET(vpin)
+///brief Resets DFPlayer 
+
+#define PLAY_RESUME(vpin)
+///brief Resumes playing sound
+///see PLAY_PAUSE 
+
+#define PLAY_STOP(vpin)
+///brief Stops DFPlayer 
+
+#define PLAY_TRACK(vpin,track,volume...)
+///brief Plays a track on a DFPlayer module
+///param track number
+///param volume... optional volume 0-30 or use default set below
+
+#define PLAY_VOLUME(vpin,volume)
+///brief Sets default volume on a DFPlayer module
+///param volume... volume 0-30
+
 #define POM(cv,value)
 ///brief Write value to cv on current tasks loco (Program on Main)
 
@@ -738,6 +788,18 @@
 ///brief Changes current tasks loco speed without changing direction
 ///param speed 0..127 (1=ESTOP)
 
+#define SPEEDUP(speedstep)
+///brief Increases current tasks loco speed by given amount
+///param speedstep 0..127
+
+#define SLOWDOWN(speedstep)
+///brief Decreases current tasks loco speed by given amount
+///param speedstep 0..127
+
+#define SPEED_REL(percent)
+///brief Sets current tasks loco speed to percentage of current speed
+///param percent 1..500
+
 #define START(sequence_id)
 ///brief Starts a new task at the given route/animation/sequence
 
@@ -835,10 +897,6 @@
 ///brief waits for completion of turntable movement
 #endif
 
-#define VIRTUAL_SIGNAL(signal_id)
-///brief Defines a virtual (no hardware) signal, use ONhandlers to simulate hardware
-///see SIGNAL
-
 #define WAIT_WHILE_RED(signal_id)
 ///brief Keeps loco at speed 0 while signal is RED
 
@@ -879,3 +937,12 @@
 ///brief Resumes locos saved speed
 ///param cab loco id
 ///see XRESTORE_SPEED
+
+#define ZTEST(command,testcode...)
+///brief Developer Unit testing.  Do not use. 
+
+#define ZTEST2(command,reply)
+///brief Developer Unit testing.  Do not use.
+
+#define ZTEST3(command,reply,testcode...)
+///brief Developer Unit testing.  Do not use. 

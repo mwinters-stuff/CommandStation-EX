@@ -66,13 +66,17 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
   // diagnostic digitalWrite(4,HIGH);   
 
   /* The Railcom timer is started in such a way that it 
-     - First triggers 58+29 uS after the previous TIMER1 tick. 
+     - First triggers a calculated time after the previous TIMER1 tick. 
        This provides an accurate offset (in High Accuracy mode)
-       for the start of the Railcom cutout.
-     - Sets the Railcom pin high at first tick and subsequent ticks 
+       for the start of the Railcom cutout. The delayBeforeCutout value 
+       reflects that this call is made at the start of the end-packet bit
+       thus the delay is nominally 58+58+Tcs BUT 
+       in HA mode, the dcc pin is flipped at the NEXT 
+       interrupt so runs 1 tick behind the code. Thus an extra 58uS is needed. 
+     - Timer2 Sets the Railcom pin high at first tick and subsequent ticks 
        until its reset to setting pin 9 low at next tick.
         
-     - Cycles at 436uS so the second tick is the 
+     - Cycles at cutoutDuration so the second tick is the 
         correct distance from the cutout.
         
      - Waveform code is responsible for resetting 
@@ -80,36 +84,38 @@ void DCCTimer::startRailcomTimer(byte brakePin) {
        (there will be 7 DCC timer1 ticks in which to do this.)
     
     */
-  const int cutoutDuration = 430; // Desired interval in microseconds
-  const int cycle=cutoutDuration/2;
-   
-  const byte RailcomFudge0=58+58+29;
+  const int Tcs=28;    // NMRA spec is 26..32
+  const int cutoutDuration_uS = 450;    // As chosen by most
+  const uint16_t delayBeforeCutout_uS=58+58+58+Tcs;
+  const uint16_t timer1_ticks_per_uS = 8;
+  const uint16_t timer2_uS_per_tick = 2;
   
   // Set Timer2 to CTC mode with set on compare match
   TCCR2A = (1 << WGM21) | (1 << COM2B0) | (1 << COM2B1);
   // Prescaler of 32
   TCCR2B =  (1 << CS21) | (1 << CS20); 
-  OCR2A = cycle-1; // Compare match value for 430 uS
+  OCR2A = cutoutDuration_uS/timer2_uS_per_tick; // Compare match value for cutout duration in timer2 ticks (2uSec)
   // Enable Timer2 output on pin 9 (OC2B)
   DDRB |= (1 << DDB1);
 
-  // RailcomFudge2 is the expected time from idealised 
-  // setup call (at previous DCC timer interrupt) to the cutout. 
-  // This value should be reduced to reflect the Timer1 value
-  // measuring the time since the previous hardware interrupt
-  byte tcfudge=TCNT1/16; 
-  TCNT2=cycle-RailcomFudge0/2+tcfudge/2;
-
+  // timeSlip is the expired time since the DCC timer interrupt that triggered this call.
+  // This allows us to cope with any delays between the interrupt and this code executing.  
   
- // Previous TIMER1 Tick was at rising end-of-packet bit
- // Cutout starts half way through first preamble
- // that is 2.5 * 58uS later.
-  }
+  
+  noInterrupts();
+  // Time already used since DCC interrupt 
+  uint16_t timeSlip_uS=TCNT1/timer1_ticks_per_uS;
+  
+  // Calculate the time left before the cutout is to be triggered
+  uint16_t timeToCutout_uS=cutoutDuration_uS+timeSlip_uS-delayBeforeCutout_uS;
+  // Adjust clock2 to trigger on time
+  TCNT2=timeToCutout_uS/timer2_uS_per_tick;
+  interrupts();
+}
 
 void DCCTimer::ackRailcomTimer() {
   // Change Timer2 to CTC mode with RESET pin 9 on next compare match
   TCCR2A = (1 << WGM21) | (1 << COM2B1);
-  // diagnostic digitalWrite(4,LOW);
 }
 
 

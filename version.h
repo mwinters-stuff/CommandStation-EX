@@ -3,7 +3,36 @@
 
 #include "StringFormatter.h"
 
-#define VERSION "5.5.54"
+#define VERSION "5.5.67"
+// 5.5.67 - RailCom, AVR: Correct cutout timer calculation
+//        - RailCom: Improved block handling
+//        - EXRAIL: new IF_ALL,IF_ANY
+// 5.5.66 - Bugfix: NeoPixel buffer size for RGBW devices
+//        - <D WIFI/ETHERNET ON> for SerialUsbLog diagnostics
+// 5.5.65 - Enable ETHERNET_HOST_NAME (defaults to WIFI_HOST_NAME)
+//        - SerialUsbLog restructure 
+// 5.5.64 - I2C scan included in <D HAL SHOW>
+// 5.5.63 - Bugfix: EXRAIL IFLOCO did not handle -1 (loco not found)
+// 5.5.62 - EXRAIL IFLOCO(list)
+//        - NEOPIXEL automatic WHITE(if available)  when red=green=blue
+// 5.5.61 - Bugfix: PCA9685 driver did not handle mux I2C addresses for writing registers
+// 5.5.60 - EXRAIL SPEEDUP(by) SLOWDOWN(by) SPEED_REL(percent)
+//        - EXRAIL ZTEST diff between cmds and test captions 
+//        - Tuning DFPlayer base timing.  
+// 5.5.59 - Bugfix buffer size for consist feedback
+//        - <!Q> command to query estop lock status
+// 5.5.58 - Freemem in 4k blocks on 32bit cpus
+//        - newline fix for Engine Driver
+// 5.5.57 - XL9535 HAL driver
+//        - ESTOP LOCK feedback to throttles
+// 5.5.56 - ESTOP_PAUSE and ESTOP_RESUME functions/commands
+//        - DFPlayerI2C auto detect UART crystal frequency
+//        - DFPlayer PAUSE and RESUME commands, and EQ names
+//        - TCA9555 alias of PCA9555
+// 5.5.55 - Bugfix: Real time clock i2c address recognition
+//        - DFPlayer redesign to amalgamate Serial and i2c drivers
+//        - DFPlayer <y> commands and EXRAIL PLAY_ macros
+//        - EXRAIL Documentation spelling corrections  
 // 5.5.54 - Bugfix: Allow longer serial payload length in parser on 32 bit arch, save RAM on AVR
 // 5.5.53 - Bugfix: EXRAIL Asserts pbSize calculation error for pin blacklist
 // 5.5.52 - Command station consists <^> and EXRAIL BUILD_CONSIST/BREAK_COMNSIST
