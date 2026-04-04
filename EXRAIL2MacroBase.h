@@ -683,7 +683,7 @@
 ///param sequence_id of ROUTE/AUTOMATION
 
 #define SAVE_SPEED
-///brief Resumes locos saved speed
+///brief Saves loco speed for later restore
 ///see RESTORE_SPEED
 
 #define SENDLOCO(cab,sequence_id)
@@ -884,6 +884,10 @@
 ///brief Performs a bitwise OR operation on the given vpin analog value and mask.
 ///param mask Binary mask to be ORed with vpin1 value
 
+#define BITMAP_SET(vpin1,value)
+///brief Sets the given vpin analog value
+///param value Value to be set
+
 #define BITMAP_XOR(vpin1,mask)
 ///brief Performs a bitwise XOR operation on the given vpin analog value and mask.
 ///param mask Binary mask to be XORed with vpin1 value
@@ -923,7 +927,7 @@
 ///param speed (0..127, 1=ESTOP)
 
 #define XPOM(cab,cv,value)
-///brief Sends DCC speed to loco in reverse direction
+///brief updates a cv on a loco using Program on Main.
 ///param cab loco id
 ///param cv  to be updated
 ///param value to be written to cv
@@ -934,7 +938,7 @@
 ///see XSAVE_SPEED
 
 #define XSAVE_SPEED(cab)
-///brief Resumes locos saved speed
+///brief Saves loco speed for later restore
 ///param cab loco id
 ///see XRESTORE_SPEED
 
