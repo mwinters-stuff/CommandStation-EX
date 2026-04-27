@@ -125,8 +125,8 @@ Once a new OPCODE is decided upon, update this list.
 #ifdef ARDUINO_ARCH_ESP32
 #include "WifiESP32.h"
 #include "DCCDecoder.h"
-#endif
-
+#include "WifiPreferences.h"
+#endif    
 // This macro can't be created easily as a portable function because the
 // flashlist requires a far pointer for high flash access. 
 #define SENDFLASHLIST(stream,flashList)                 \
@@ -738,29 +738,25 @@ void DCCEXParser::parseOne(Print *stream, byte *com, RingStream * ringStream)
         StringFormatter::send(stream, F("\n"));
         return;
     case 'C': // CONFIG <C [params]>
+       {
 #if defined(ARDUINO_ARCH_ESP32)
-// currently this only works on ESP32
+// curently this only works on ESP32
       if (p[0] == "SNIFFER"_hk) { // <C SNIFFER ON|OFF>
-	bool on = false;
-	if (params>1 && p[1] == "ON"_hk) {
-	  on = true;
-	}
-	DCCDecoder::onoff(on);
-	return;
+	     bool on = false;
+	     if (params>1 && p[1] == "ON"_hk) {
+	        on = true;
+	      }
+	      DCCDecoder::onoff(on);
+	      return;
       }
-#if WIFI_ON
-      if (p[0] == "WIFI"_hk) { 	// <C WIFI SSID PASSWORD>
-	if (params != 5)        // the 5 params 0 to 4 are (kinda): WIFI_hk 0x7777 &SSID 0x7777 &PASSWORD
-	  break;
-	if (p[1] == 0x7777 && p[3] == 0x7777) {
-	  WifiESP::setup((const char*)(com + p[2]), (const char*)(com + p[4]), WIFI_HOSTNAME, IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
-	}
-	return;
-      }
-#endif
+
+    if (p[0] == "WIFI"_hk) {
+        if (parseWifi(stream, params, p,com)) return;
+    }
 #endif //ESP32
       if (parseC(stream, params, p))
 	return;
+}
       break;
 #ifndef DISABLE_DIAG
     case 'D': // DIAG <D [params]>
@@ -1361,10 +1357,106 @@ bool DCCEXParser::parseC(Print *stream, int16_t params, int16_t p[]) {
     return false;
 }
 
+#ifdef ARDUINO_ARCH_ESP32
+bool DCCEXParser::parseWifi(Print * stream, int16_t params, int16_t p[], const byte * com) {
+    if (params<2) return false;
+
+    /* NOTE: commands checked with stream==&USB_SERIAL 
+      are only allowed from USB serial, not from wifi or other sources. 
+      This is to ensure that a user can only change them if they have
+      access to the USB serial in order to unlock a blocked system such
+      as WIFI OFF or AP mode password forgotten. */
+
+    if (stream!=&USB_SERIAL 
+         && ( p[1]=="OFF"_hk || p[1]=="AP"_hk || p[1]=="HIDDENAP"_hk) ) {
+        StringFormatter::send(stream, F("<* WIFI OFF or AP ignored over WiFi *>\n"));
+        return false;
+    }
+
+    if (params==2 
+        && p[1]=="ON"_hk) { // <C WIFI ON>
+        WifiPreferences::enable(true);
+        WifiESP::setup();
+        return true;
+    }
+
+    if (params==2 
+        && p[1]=="OFF"_hk) { // <C WIFI OFF>
+        WifiPreferences::enable(false);
+        WifiESP::setup();
+        return true;
+    }
+
+    if (params==4 
+        && p[1]=="HOSTNAME"_hk 
+        && p[2]==STRING_MARKER) { // <C WIFI HOSTNAME "xx">
+        auto hostname=(const char*)(com + p[3]);
+        WifiPreferences::saveHostName(hostname);
+        WifiESP::setup();
+        return true;
+    }
+
+    if (params==2 
+        && p[1]=="DEFAULT"_hk) { // <C WIFI DEFAULT>
+        WifiPreferences::clear();
+        WifiESP::setup();
+        return true;
+    }
+
+    if (params==5 
+        && p[1] == STRING_MARKER 
+        && p[3] == STRING_MARKER ) {
+        // <C WIFI "ssid" "password">  sets sticky sta mode credentials
+        auto ssid=(const char*)(com + p[2]);
+        auto password=(const char*)(com + p[4]);
+        if (strlen(password)<8) return false; // minimum password length for WPA2
+        WifiPreferences::saveSTA(ssid,password,true); // save sticky credentials                   
+        WifiESP::setup();
+        return true;
+    }
+    
+    if (params==6 
+        && p[1]=="TEMP"_hk 
+        && p[2] == STRING_MARKER 
+        && p[4] == STRING_MARKER ) {
+        // <C WIFI TEMP "ssid" "password">  sets non-sticky sta mode credentials
+        auto ssid=(const char*)(com + p[3]);
+        auto password=(const char*)(com + p[5]);
+        if (strlen(password)<8) return false; // minimum password length for WPA2
+        WifiPreferences::saveSTA(ssid,password,false); // save non-sticky credentials                   
+        WifiESP::setup();
+        return true;
+    }
+    
+    if ((params ==6 || params==7) 
+        && (p[1]=="AP"_hk || p[1]=="HIDDENAP"_hk)  
+        && p[2] == STRING_MARKER 
+        && p[4] == STRING_MARKER ) {
+        // <C WIFI AP "ssid" "password" [channel]>
+        auto ssid=(const char*)(com + p[3]);
+        auto password=(const char*)(com + p[5]);
+        byte channel=(params==7)?p[6]:11;
+        bool hidden=(p[1]=="HIDDENAP"_hk);
+        if (strlen(password)<8) return false; // minimum password length for WPA2
+        WifiPreferences::saveAP(ssid,password,channel,hidden); 
+        WifiESP::setup();
+        return true;
+    }
+
+    return false; // invalid/unknown
+}
+#endif
+
 bool DCCEXParser::parseD(Print *stream, int16_t params, int16_t p[])
 {
     if (params == 0)
         return false;
+#ifdef ARDUINO_ARCH_ESP32
+    if (params==2 && p[0]=="WIFI"_hk  && p[1]=="SHOW"_hk ) { // <D WIFI SHOW>
+          WifiPreferences::dump(stream);
+          return true;
+    }
+#endif        
     bool onOff = (params > 0) && (p[1] == 1 || p[1] == "ON"_hk); // dont care if other stuff or missing... just means off
     switch (p[0])
     {
