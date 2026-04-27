@@ -1,4 +1,4 @@
-#include "EXRAILMacros.h"
+// #include "EXRAILMacros.h"
 
 // HM7000_826E, b90f634c
 ROSTER(5,"A4 William Whitehall",
@@ -9,6 +9,7 @@ ROSTER(5,"A4 William Whitehall",
 ROSTER(6,"Green DB Schenker Class 08",
   "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
+#ifdef ARDUINO_ARCH_ESP32
 
 // HM7000_FBEB, 787ff47f
 ROSTER(7,"Duchess of Montrose",
@@ -20,17 +21,26 @@ ROSTER(8,"Red DB Schenker Class 08",
   "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
 
+
 // HM7000_0B56, ad3c5681
 ROSTER(9,"Terrier",
   "/////F5 Shunting/*F6 Creep/*F7 Brake"
 )
+
+#endif
 
 // HM7000_929D, db00c17c
 ROSTER(10,"Class 37",
   "F0 Day Light/F1 Engine Start/*F2 Horns 1/*F3 Horns 2/*F4 Brake Squeal/*F5 Diesel Notch Up/*F6 Diesel Notch Down/*F7 Idle/F8 Engine Thrash/F9 Diesel Cold Start/F10 Compressor/F11 Spirax Valve/F12 Cooling Fan/*F13 AWS Indicator/F14 Flange Squeal/*F15 Brake Release/*F16 Door Closed/*F17 AWS Indicator/F18 Diesel Primer/*F19 Guards Whistle/*F20 Wagons Clanking/F21 Day Light/F22 Rear Light/F23 Cabin Light/F24 Aux Lighting/F26 Shunting Mode/*F27 Creep Mode/*F28 Apply Brake/F29 Automated Function Control"
 )
 
+// HM7000_0AE3, 86530533
+ROSTER(11,"LNER J50",
+  "/////F5 Shunting/*F6 Creep/*F7 Brake"
+)
+
 #ifdef ARDUINO_ARCH_ESP32
+
 ALIAS(SEQUENCE_STARTUP)
 
 
@@ -149,24 +159,25 @@ ALIAS(BUTTON_POINT_BACK_RIGHT_CROSSOVER          , 329)
 // sensor pins
 ALIAS(SENSOR_RIGHT_OUTER_CURVE                   , 223)
 ALIAS(SENSOR_RIGHT_INNER_CURVE                   , 224)
-ALIAS(SENSOR_REVERSE_LOOP                        , 208)
-ALIAS(SENSOR_OCCUPIED_FRONT_OUTER_1              , 202)
-ALIAS(SENSOR_OCCUPIED_FRONT_OUTER_2              , 222)
+ALIAS(SENSOR_REVERSE_LOOP                        , 209)
+ALIAS(SENSOR_OCCUPIED_FRONT_OUTER_1              , 200)
+ALIAS(SENSOR_OCCUPIED_FRONT_OUTER_2              , 225)
 ALIAS(SENSOR_OCCUPIED_FRONT_INNER_1              , 201)
-ALIAS(SENSOR_OCCUPIED_FRONT_INNER_2              , 221)
-ALIAS(SENSOR_OCCUPIED_LOOP_1                     , 200)
-ALIAS(SENSOR_OCCUPIED_LOOP_2                     , 220)
+ALIAS(SENSOR_OCCUPIED_FRONT_INNER_2              , 226)
+ALIAS(SENSOR_OCCUPIED_LOOP_1                     , 205)
+ALIAS(SENSOR_OCCUPIED_LOOP_2                     , 227)
 ALIAS(SENSOR_OCCUPIED_REAR_OUTER_LEFT            , 207)
-ALIAS(SENSOR_OCCUPIED_REAR_OUTER_RIGHT           , 226)
-ALIAS(SENSOR_OCCUPIED_REAR_INNER_LEFT            , 206)
-ALIAS(SENSOR_OCCUPIED_REAR_INNER_RIGHT           , 225)
-ALIAS(SENSOR_OCCUPIED_YARD                       , 205)
+ALIAS(SENSOR_OCCUPIED_REAR_OUTER_RIGHT           , 221)
+ALIAS(SENSOR_OCCUPIED_REAR_INNER_LEFT            , 208)
+ALIAS(SENSOR_OCCUPIED_REAR_INNER_RIGHT           , 222)
+ALIAS(SENSOR_OCCUPIED_YARD                       , 206)
 ALIAS(SENSOR_LEFT_INNER_CURVE                    , 203)
-ALIAS(SENSOR_LEFT_OUTER_CURVE                    , 204)
+ALIAS(SENSOR_LEFT_OUTER_CURVE                    , 202)
 
+JMRI_SENSOR(200,12)
+JMRI_SENSOR(220,12)
 #endif
-// JMRI_SENSOR(200,9)
-// JMRI_SENSOR(220,7)
+
 
 
 // points
@@ -178,6 +189,9 @@ SERVO_TURNOUT(POINT_FRONT_RIGHT_REVERSE_LOOP, POINT_FRONT_RIGHT_REVERSE_LOOP_PIN
 SERVO_TURNOUT(POINT_FRONT_RIGHT_LOOP        , POINT_FRONT_RIGHT_LOOP_PIN        , 280, 320, Instant, "Loop Front Right")
 SERVO_TURNOUT(POINT_ENGINE_SHED             , POINT_ENGINE_SHED_PIN             , 340, 290, Instant, "To Engine Shed")
 SERVO_TURNOUT(POINT_YARD                    , POINT_YARD_PIN                    , 310, 350, Instant, "To Yard")
+
+#ifdef ARDUINO_ARCH_ESP32
+
 // "Front Left Crossover Outer"
 SERVO_TURNOUT(POINT_FRONT_LEFT_CROSS_OUTER  , POINT_FRONT_LEFT_CROSS_OUTER_PIN  , 370, 310, Instant, HIDDEN)
 // "Front Left Crossover Inner"
@@ -205,7 +219,6 @@ VIRTUAL_TURNOUT(POINT_FRONT_LEFT_CROSSOVER , "Crossover Front Left")
 VIRTUAL_TURNOUT(POINT_BACK_LEFT_CROSSOVER  , "Crossover Back Left")
 VIRTUAL_TURNOUT(POINT_BACK_RIGHT_CROSSOVER , "Crossover Back Right")
 
-#ifdef ARDUINO_ARCH_ESP32
 
 // UNCOUPLERS, are defined as servo_turnouts
 SERVO_TURNOUT(UNCOUPLER_FRONT_RIGHT_OUTER, UNCOUPLER_FRONT_RIGHT_OUTER_PIN, 330, 250, Instant, "Uncoupler Front Right Outer")      // 108
@@ -352,6 +365,33 @@ CONFIGURE_SERVO(LED_BACK_RIGHT_CROSSOVER_CROSSED, 4095, 0, PCA9685::NoPowerOff |
 CONFIGURE_SERVO(LED_BACK_RIGHT_CROSSOVER_INNER  , 4095, 0, PCA9685::NoPowerOff | PCA9685::Fast)
 CONFIGURE_SERVO(LED_BACK_RIGHT_CROSSOVER_OUTER  , 4095, 0, PCA9685::NoPowerOff | PCA9685::Fast)
 
+#endif 
+
+HAL(EXTurntable,600,1,0x60)
+EXTT_TURNTABLE(1,600,0,"My EX-Turntable")
+TT_ADDPOSITION(1,1,400,0,"Stall 1")
+TT_ADDPOSITION(1,2,800,0, "Stall 2")
+TT_ADDPOSITION(1,3,1200,0,"Stall 3")
+TT_ADDPOSITION(1,4,1600,0,"Stall 4")
+TT_ADDPOSITION(1,5,2000,0,"Stall 5")
+TT_ADDPOSITION(1,6,2400,0,"Stall 6")
+TT_ADDPOSITION(1,7,2800,0,"Stall 7")
+TT_ADDPOSITION(1,8,200,0,"Stall 8")
+TT_ADDPOSITION(1,9,3000,0,"Stall 9")
+
+#ifndef ARDUINO_ARCH_ESP32
+ROUTE(1,"Coal Yard exit")
+  THROW(1)
+  CLOSE(7)
+DONE
+
+ROUTE(2,"Coal Yard entry")
+  THROW(1)
+  CLOSE(7)
+DONE
+#endif
+
+#ifdef ARDUINO_ARCH_ESP32
 
 ONTHROW(POINT_FRONT_RIGHT_CROSSOVER)
   THROW(POINT_FRONT_RIGHT_CROSS_OUTER)

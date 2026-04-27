@@ -22,7 +22,7 @@
 //#include "IO_VL53L0X.h"   // Laser time-of-flight sensor
 //#include "IO_DFPlayer.h"  // MP3 sound player
 //#include "IO_TouchKeypad.h  // Touch keypad with 16 keys
-//#include "IO_EXTurntable.h"   // Turntable-EX turntable controller
+#include "Turntables.h"   // Turntable-EX turntable controller
 //#include "IO_EXFastClock.h"  // FastClock driver
 //#include "IO_PCA9555.h"     // 16-bit I/O expander (NXP & Texas Instruments).
 //#include "IO_I2CDFPlayer.h" // DFPlayer over I2C
@@ -299,7 +299,7 @@ void halSetup() {
   //
   // Note that the I2C address is defined in the EX-Turntable code, and 0x60 is the default.
 
-  //EXTurntable::create(600, 1, 0x60);
+  EXTurntable::create(600, 1, 0x60);
 
 
   //=======================================================================

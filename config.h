@@ -87,11 +87,11 @@ The configuration file for DCC-EX Command Station
 // NOTE: Not supported on Arduino Uno or Nano
 // Set to false if you not even want it on the Arduino Mega
 //
-#ifdef ARDUINO_ARCH_ESP32
+// #ifdef ARDUINO_ARCH_ESP32
 #define ENABLE_WIFI true
-#else
-#define ENABLE_WIFI false
-#endif
+// #else
+// #define ENABLE_WIFI true
+// #endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -161,9 +161,9 @@ The configuration file for DCC-EX Command Station
 // on the W5100/W5500 ethernet chip or an STM32 CS with builin ethernet like the F429ZI.
 // This is not for Wifi. You will then need the Arduino Ethernet library as well.
 //
-#ifndef ARDUINO_ARCH_ESP32
-#define ENABLE_ETHERNET true
-#endif
+// #ifndef ARDUINO_ARCH_ESP32
+// #define ENABLE_ETHERNET true
+// #endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -226,8 +226,9 @@ The configuration file for DCC-EX Command Station
 // EEPROM does not work on ESP32. So on ESP32, EEPROM will always be disabled,
 // at least until it works.
 //
-// #define DISABLE_EEPROM
-
+#ifndef ARDUINO_ARCH_ESP32
+ #define DISABLE_EEPROM
+#endif
 /////////////////////////////////////////////////////////////////////////////////////
 // DISABLE PROG
 //
@@ -237,7 +238,9 @@ The configuration file for DCC-EX Command Station
 // 
 // Note this disables all programming functionality, including EXRAIL.
 //
-// #define DISABLE_PROG
+#ifndef ARDUINO_ARCH_ESP32
+  #define DISABLE_PROG
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 // DISABLE / ENABLE VDPY
