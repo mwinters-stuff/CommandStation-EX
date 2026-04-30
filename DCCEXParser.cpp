@@ -1668,8 +1668,11 @@ return false;
 // CALLBACKS must be static
 bool DCCEXParser::stashCallback(Print *stream, int16_t p[MAX_COMMAND_PARAMS], RingStream * ringStream)
 {
-    if (stashBusy )
+    if (stashBusy) {
+        StringFormatter::send(stream, F("<* PROG busy *>\n"));
         return false;
+    }
+
     stashBusy = true;
     stashStream = stream;
     stashRingStream=ringStream;
