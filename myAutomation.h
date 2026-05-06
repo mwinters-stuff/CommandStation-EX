@@ -389,6 +389,25 @@ ROUTE(2,"Coal Yard entry")
   THROW(1)
   CLOSE(7)
 DONE
+
+#define EX_TURNTABLE(route_id, reserve_id, vpin, steps, activity, desc) \
+  ROUTE(route_id, desc) \
+    RESERVE(reserve_id) \
+    MOVETT(vpin, steps, activity) \
+    WAITFOR(vpin) \
+    FREE(reserve_id) \
+    DONE
+EX_TURNTABLE(TTRoute1, Turntable, 600, 114, Turn, "Position 1")
+EX_TURNTABLE(TTRoute2, Turntable, 600, 227, Turn, "Position 2")
+EX_TURNTABLE(TTRoute3, Turntable, 600, 341, Turn, "Position 3")
+
+ALIAS(Turntable, 255)
+
+// Turntable ROUTE ID reservations, using <? TTRouteX> for uniqueness:
+ALIAS(TTRoute1)
+ALIAS(TTRoute2)
+ALIAS(TTRoute3)
+
 #endif
 
 #ifdef ARDUINO_ARCH_ESP32

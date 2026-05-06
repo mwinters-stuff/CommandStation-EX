@@ -87,11 +87,11 @@ The configuration file for DCC-EX Command Station
 // NOTE: Not supported on Arduino Uno or Nano
 // Set to false if you not even want it on the Arduino Mega
 //
-// #ifdef ARDUINO_ARCH_ESP32
+#ifdef ARDUINO_ARCH_ESP32
 #define ENABLE_WIFI true
-// #else
-// #define ENABLE_WIFI true
-// #endif
+#else
+#define ENABLE_WIFI false
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
@@ -161,9 +161,9 @@ The configuration file for DCC-EX Command Station
 // on the W5100/W5500 ethernet chip or an STM32 CS with builin ethernet like the F429ZI.
 // This is not for Wifi. You will then need the Arduino Ethernet library as well.
 //
-// #ifndef ARDUINO_ARCH_ESP32
-// #define ENABLE_ETHERNET true
-// #endif
+#ifndef ARDUINO_ARCH_ESP32
+#define ENABLE_ETHERNET true
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
