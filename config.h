@@ -238,9 +238,9 @@ The configuration file for DCC-EX Command Station
 // 
 // Note this disables all programming functionality, including EXRAIL.
 //
-#ifndef ARDUINO_ARCH_ESP32
-  #define DISABLE_PROG
-#endif
+// #ifndef ARDUINO_ARCH_ESP32
+//   #define DISABLE_PROG
+// #endif
 
 /////////////////////////////////////////////////////////////////////////////////////
 // DISABLE / ENABLE VDPY
