@@ -1532,6 +1532,11 @@ bool DCCEXParser::parseD(Print *stream, int16_t params, int16_t p[])
         IODevice::writeAnalogue(p[1], p[2], params>3 ? p[3] : 0);
         return true;
 
+    case "OTA"_hk:    // <D OTA ON/OFF>
+        Diag::OTA = onOff;
+        DIAG(F("OTA=%S"), onOff ? F("ON") : F("OFF"));
+        return true;
+
     default: // invalid/unknown
         return parseC(stream, params, p);
     }
