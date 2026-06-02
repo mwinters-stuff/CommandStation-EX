@@ -1,5 +1,20 @@
 // #include "EXRAILMacros.h"
 
+HAL_IGNORE_DEFAULTS
+
+HAL(PCF8575, 320, 16, {I2CMux_1,SubBus_0,0x23})
+HAL(PCF8575, 300, 16, {I2CMux_1,SubBus_1,0x20})
+HAL(PCA9685, 380, 16, {I2CMux_1,SubBus_2,0x45})
+HAL(PCA9685, 360, 16, {I2CMux_1,SubBus_3,0x44})
+HAL(PCA9685, 400, 16, {I2CMux_1,SubBus_4,0x46})
+HAL(PCA9685, 340, 16, {I2CMux_1,SubBus_5,0x43})
+  // Device found at {I2CMux_1,SubBus_2,0x70}, I2C Mux?
+  // Device found at {I2CMux_1,SubBus_3,0x70}, I2C Mux?
+  // Device found at {I2CMux_1,SubBus_4,0x70}, I2C Mux?
+  // Device found at {I2CMux_1,SubBus_5,0x70}, I2C Mux?
+
+// HAL(PCA9685, 100, 16, {I2CMux_1, SubBus_0, 0x46})
+
 // HM7000_826E, b90f634c
 ROSTER(5,"A4 William Whitehall",
   "/F1 Sound ON-OFF/*F2 Whistle 1/*F3 Whistle 2/*F4 Brake/F5 Cylinder Cock/*F6 Wheel Slip/F7 Coal Shoveling/F8 Injector Valve/F9 Safety Valve/*F10 Guards Whistle/*F11 Coupling/*F12 Carrage Brake Squeal/F13 Flange Squeal/F14 Blower/*F15 Door Closed/F16 Firemans Breakfast/F17 Blowdown/*F18 Bell/F19 Water Fill/F20 Chuffing Coasting/////F25 Shunting Mode/*F26 Creep Mode/*F27 Apply Brake/F28 Auto Function Control"
@@ -57,6 +72,7 @@ ALIAS(POINT_FRONT_RIGHT_LOOP_PIN           , 102)
 ALIAS(POINT_ENGINE_SHED_PIN                , 103)
 ALIAS(POINT_YARD_PIN                       , 104)
 ALIAS(POINT_FRONT_RIGHT_CROSS_INNER_PIN    , 105)
+ALIAS(POINT_ENGINE_SHED_TO_TURNTABLE_PIN   , 106)
 ALIAS(POINT_FRONT_LEFT_CROSS_OUTER_PIN     , 120)
 ALIAS(POINT_FRONT_LEFT_LOOP_PIN            , 121)
 ALIAS(POINT_BACK_LEFT_CROSS_OUTER_PIN      , 122)
@@ -78,6 +94,7 @@ ALIAS(POINT_FRONT_RIGHT_LOOP           , 102)
 ALIAS(POINT_ENGINE_SHED                , 103)
 ALIAS(POINT_YARD                       , 104)
 ALIAS(POINT_FRONT_RIGHT_CROSS_INNER    , 105)
+ALIAS(POINT_ENGINE_SHED_TO_TURNTABLE   , 106)
 ALIAS(POINT_FRONT_LEFT_CROSS_OUTER     , 120)
 ALIAS(POINT_FRONT_LEFT_LOOP            , 121)
 ALIAS(POINT_BACK_LEFT_CROSS_OUTER      , 122)
@@ -189,6 +206,7 @@ SERVO_TURNOUT(POINT_FRONT_RIGHT_REVERSE_LOOP, POINT_FRONT_RIGHT_REVERSE_LOOP_PIN
 SERVO_TURNOUT(POINT_FRONT_RIGHT_LOOP        , POINT_FRONT_RIGHT_LOOP_PIN        , 280, 320, Instant, "Loop Front Right")
 SERVO_TURNOUT(POINT_ENGINE_SHED             , POINT_ENGINE_SHED_PIN             , 340, 290, Instant, "To Engine Shed")
 SERVO_TURNOUT(POINT_YARD                    , POINT_YARD_PIN                    , 310, 350, Instant, "To Yard")
+SERVO_TURNOUT(POINT_ENGINE_SHED_TO_TURNTABLE, POINT_ENGINE_SHED_TO_TURNTABLE_PIN, 350, 310, Instant, "To Turntable")
 
 #ifdef ARDUINO_ARCH_ESP32
 

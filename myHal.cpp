@@ -57,7 +57,6 @@ void halSetup() {
 
   // HALDisplay<LiquidCrystal>::create(2, 0x27, 20, 4);
 
-
   //=======================================================================
   // User Add-ins
   //=======================================================================
@@ -99,20 +98,22 @@ void halSetup() {
   //   First Vpin=100
   //   Number of VPINs=16 (numbered 100-115)
   //   I2C address of module=0x40
-
+  
+    // HAL_PCA9685(0x46, 16, 0x71, 0)
+    // PCA9685::create(400, 16, 0x46);
   PCA9685::create(100, 16, 0x40);
   PCA9685::create(120, 16, 0x41);
 #ifdef ARDUINO_ARCH_ESP32
   PCA9685::create(140, 16, 0x42);
-  PCA9685::create(340, 16, 0x43);
-  PCA9685::create(360, 16, 0x44);
-  PCA9685::create(380, 16, 0x45);
-  PCA9685::create(400, 16, 0x46);
+//   PCA9685::create(340, 16, 0x43);
+//   PCA9685::create(360, 16, 0x44);
+//   PCA9685::create(380, 16, 0x45);
+//   PCA9685::create(400, 16, 0x46);
 
   PCF8575::create(200, 16, 0x21);
   PCF8575::create(220, 16, 0x22);
-  PCF8575::create(300, 16, 0x20);
-  PCF8575::create(320, 16, 0x23);
+//   PCF8575::create(300, 16, 0x20);
+//   PCF8575::create(320, 16, 0x23);
 #endif
   //=======================================================================
   // The following directive defines an MCP23017 16-port I2C GPIO Extender module.
@@ -299,7 +300,7 @@ void halSetup() {
   //
   // Note that the I2C address is defined in the EX-Turntable code, and 0x60 is the default.
 
-  EXTurntable::create(600, 1, 0x60);
+  // EXTurntable::create(600, 1, 0x60);
 
 
   //=======================================================================
