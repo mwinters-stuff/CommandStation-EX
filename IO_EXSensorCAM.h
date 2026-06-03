@@ -25,7 +25,7 @@
 // v306 Pass vpin to regeister it in CamParser.  Incompatible with 5.4.0+
 //   "  Move base vpin to camparser. devel 5.5.15+ only
 // v305 less debug & alpha ordered switch
-// v304 static oldb0;  t(##[,%%]; 
+// v304 static oldb0;  t(##[,%%]); 
 // v303 zipped with CS 5.2.76 and uploaded to repo (with debug)
 // v302 SEND=StringFormatter::send, remove Sp(), add 'q', memcpy( .8) -> .7); 
 // v301 improved 'f','p'&'q' code and driver version calc. Correct bsNo calc. for 'a'							 
@@ -242,9 +242,6 @@ int processIncomingPkt(uint8_t *rBuf,uint8_t sensorCmd) {
   switch (sensorCmd){
     case '`':      //response to request for digitalInputStates[] table  '@'=>'`'  
       memcpy(_digitalInputStates, rBuf+1, digitalBytesNeeded);
-//      if ( _digitalInputStates[0]!=oldb0) { oldb0=_digitalInputStates[0];  //debug
-//        for (k=0;k<5;k++) {Serial.print(" ");Serial.print(_digitalInputStates[k],HEX);}
-//      }
       break;                                                 
 
     case EXIORDY:  //some commands give back acknowledgement only

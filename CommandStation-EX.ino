@@ -52,6 +52,7 @@
 #ifdef ARDUINO_ARCH_ESP32
 #include "Sniffer.h"
 #include "DCCDecoder.h"
+#include <ArduinoOTA.h>
 Sniffer *dccSniffer = NULL;
 bool DCCDecoder::active = false;
 #ifdef ARDUINO_ARCH_ESP32
@@ -119,7 +120,12 @@ void setup()
 #ifndef ARDUINO_ARCH_ESP32
   WifiInterface::setup(WIFI_SERIAL_LINK_SPEED, F(WIFI_SSID), F(WIFI_PASSWORD), F(WIFI_HOSTNAME), IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
 #else
-  WifiESP::setup();
+  WifiESP::setup(WIFI_SSID, WIFI_PASSWORD, WIFI_HOSTNAME, IP_PORT, WIFI_CHANNEL, WIFI_FORCE_AP);
+
+  #if OTA_AUTO_INIT
+    Diag::OTA = true;
+  #endif // OTA_AUTO_INIT
+  
 #endif // ARDUINO_ARCH_ESP32
 #if OTA_AUTO_INIT
   Diag::OTA = true;
@@ -250,6 +256,52 @@ void loop()
     }
   }
 #endif //WIFI_ON
+
+ // Responsibility 4: Optionally handle Arduino OTA updates
+  if (Diag::OTA) {
+    static bool otaInitialised = false;
+    // Initialise OTA if not already done
+    if (!otaInitialised) {
+      ArduinoOTA.setHostname(WIFI_HOSTNAME);
+      // Prevent locos from moving during OTA
+      ArduinoOTA.onStart([]() {
+        // Emergency stop all locos
+        DCC::setThrottle(0,1,1);
+        // Disable tracks power
+        TrackManager::setMainPower(POWERMODE::OFF);
+        TrackManager::setProgPower(POWERMODE::OFF);
+        // Broadcast power status
+        CommandDistributor::broadcastPower();
+        DISPLAY_START (
+          LCD(0,F("OTA update"));
+          LCD(1,F("In progress..."));
+        );
+      });
+      ArduinoOTA.onEnd([]() {
+        DISPLAY_START (
+          LCD(0,F("OTA update"));
+          LCD(1,F("Complete"));
+        );
+      });
+      ArduinoOTA.onError([](ota_error_t error) {
+        DISPLAY_START (
+          LCD(0,F("OTA update"));
+          LCD(1,F("Error: %d"), error);
+        );
+      });
+      // Set OTA password if defined
+      #ifdef OTA_AUTH
+        ArduinoOTA.setPassword(OTA_AUTH);
+      #endif // OTA_AUTH
+      ArduinoOTA.begin();
+      otaInitialised = true;
+    }
+    // Handle OTA if initialised
+    else {
+      ArduinoOTA.handle();
+    }
+  }
+
 #endif //ARDUINO_ARCH_ESP32
 #if ETHERNET_ON
   EthernetInterface::loop();
