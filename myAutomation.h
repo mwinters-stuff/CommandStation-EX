@@ -2,12 +2,12 @@
 
 HAL_IGNORE_DEFAULTS
 
-HAL(PCF8575, 320, 16, {I2CMux_1,SubBus_0,0x23})
-HAL(PCF8575, 300, 16, {I2CMux_1,SubBus_1,0x20})
-HAL(PCA9685, 380, 16, {I2CMux_1,SubBus_2,0x45})
-HAL(PCA9685, 360, 16, {I2CMux_1,SubBus_3,0x44})
-HAL(PCA9685, 400, 16, {I2CMux_1,SubBus_4,0x46})
-HAL(PCA9685, 340, 16, {I2CMux_1,SubBus_5,0x43})
+// HAL(PCF8575, 320, 16, {I2CMux_1,SubBus_0,0x23})
+// HAL(PCF8575, 300, 16, {I2CMux_1,SubBus_1,0x20})
+// HAL(PCA9685, 380, 16, {I2CMux_1,SubBus_2,0x45})
+// HAL(PCA9685, 360, 16, {I2CMux_1,SubBus_3,0x44})
+// HAL(PCA9685, 400, 16, {I2CMux_1,SubBus_4,0x46})
+// HAL(PCA9685, 340, 16, {I2CMux_1,SubBus_5,0x43})
   // Device found at {I2CMux_1,SubBus_2,0x70}, I2C Mux?
   // Device found at {I2CMux_1,SubBus_3,0x70}, I2C Mux?
   // Device found at {I2CMux_1,SubBus_4,0x70}, I2C Mux?
