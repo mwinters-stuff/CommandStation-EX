@@ -2,18 +2,24 @@
 
 HAL_IGNORE_DEFAULTS
 
-// HAL(PCF8575, 320, 16, {I2CMux_1,SubBus_0,0x23})
-// HAL(PCF8575, 300, 16, {I2CMux_1,SubBus_1,0x20})
-// HAL(PCA9685, 380, 16, {I2CMux_1,SubBus_2,0x45})
-// HAL(PCA9685, 360, 16, {I2CMux_1,SubBus_3,0x44})
-// HAL(PCA9685, 400, 16, {I2CMux_1,SubBus_4,0x46})
-// HAL(PCA9685, 340, 16, {I2CMux_1,SubBus_5,0x43})
-  // Device found at {I2CMux_1,SubBus_2,0x70}, I2C Mux?
-  // Device found at {I2CMux_1,SubBus_3,0x70}, I2C Mux?
-  // Device found at {I2CMux_1,SubBus_4,0x70}, I2C Mux?
-  // Device found at {I2CMux_1,SubBus_5,0x70}, I2C Mux?
+// Control Board
+HAL(PCF8575, 320, 16, {I2CMux_1,SubBus_0,0x23})
+HAL(PCF8575, 300, 16, {I2CMux_1,SubBus_1,0x20})
+HAL(PCA9685, 380, 16, {I2CMux_1,SubBus_2,0x45})
+HAL(PCA9685, 360, 16, {I2CMux_1,SubBus_3,0x44})
+HAL(PCA9685, 400, 16, {I2CMux_1,SubBus_4,0x46})
+HAL(PCA9685, 340, 16, {I2CMux_1,SubBus_5,0x43})
+HAL(HALDisplay<OLED>, 0, {I2CMux_1, SubBus_6, 0x3d}, 128, 64)
 
-// HAL(PCA9685, 100, 16, {I2CMux_1, SubBus_0, 0x46})
+// Right Side Layout
+HAL(PCF8575, 220, 16, {I2CMux_2,SubBus_0,0x22})
+HAL(PCA9685, 100, 16, {I2CMux_2,SubBus_1,0x40})
+
+// Left Side Layout
+HAL(PCF8575, 200, 16, {I2CMux_3,SubBus_3,0x21})
+HAL(PCA9685, 120, 16, {I2CMux_3,SubBus_5,0x41})
+HAL(PCA9685, 140, 16, {I2CMux_3,SubBus_4,0x42})
+HAL(EXTurntable, 600, 1, {I2CMux_3,SubBus_2,0x60})
 
 // HM7000_826E, b90f634c
 ROSTER(5,"A4 William Whitehall",
@@ -385,7 +391,7 @@ CONFIGURE_SERVO(LED_BACK_RIGHT_CROSSOVER_OUTER  , 4095, 0, PCA9685::NoPowerOff |
 
 #endif 
 
-HAL(EXTurntable,600,1,0x60)
+// HAL(EXTurntable,600,1,0x60)
 EXTT_TURNTABLE(1,600,0,"My EX-Turntable")
 TT_ADDPOSITION(1,1,613,0,"Entry")
 TT_ADDPOSITION(1,2,800,0, "Stall 2")

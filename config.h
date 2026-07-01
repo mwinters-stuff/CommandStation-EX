@@ -190,8 +190,8 @@ The configuration file for DCC-EX Command Station
 //OR define OLED_DRIVER width,height[,address] in pixels (address auto detected if not supplied)
 // 128x32 or 128x64 I2C SSD1306-based devices are supported.
 // Use 132,64 for a SH1106-based I2C device with a 128x64 display.
-#ifdef ARDUINO_ARCH_ESP32
-#define OLED_DRIVER 0x3c,128,64
+#ifndef ARDUINO_ARCH_ESP32
+  #define OLED_DRIVER 0x3c,128,64
 #endif
 
 // Define scroll mode as 0, 1 or 2
@@ -367,8 +367,9 @@ The configuration file for DCC-EX Command Station
 //#define WIFI_LED 2
 //
 // GPIO 33 on EX-CSB1
+#ifdef ARDUINO_ARCH_ESP32
 //#define WIFI_LED 33
-
+#endif
 // SABERTOOTH
 //
 // This is a very special option and only useful if you happen to have a
