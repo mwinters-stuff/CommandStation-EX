@@ -368,7 +368,7 @@ The configuration file for DCC-EX Command Station
 //
 // GPIO 33 on EX-CSB1
 #ifdef ARDUINO_ARCH_ESP32
-//#define WIFI_LED 33
+#define WIFI_LED 33
 #endif
 // SABERTOOTH
 //
