@@ -135,9 +135,6 @@ ZZ(t,loco) // Request loco status
 ZZ(t,loco,tSpeed,direction) // Set throttle speed(0..127) and direction (0=reverse, 1=fwd) 
         CHECK(loco>0 || tSpeed<0) // allow loco 0 broadcast -1 estop
         CHECK(setThrottle(loco,tSpeed,direction)) 
-ZZ(t,ignore,loco,tSpeed,direction) // Set throttle speed and direction (Deprecated)
-        CHECK(loco>0 || tSpeed<0) // allow loco 0 broadcast -1 estop
-        CHECK(setThrottle(loco,tSpeed,direction)) 
 ZZ(f,loco,byte1)  //Set loco function group  (Deprecated use F)  
     switch ( byte1 & 0b11110000) { // 1111 0000
         case 0b11100000: // 111x xxxx Function group 1 F0..F4
@@ -449,6 +446,13 @@ ZZ(D,ACK,RETRY,value) // Set ACK retry count
 #endif
 
 #if defined(ARDUINO_ARCH_ESP32)
+#ifdef BOOSTER_INPUT
+// <C SNIFFER [ON|OFF]>
+ZZ(C,SNIFFER,ON)  // Turn sniffer output on
+  DCCDecoder::onoff(true);
+ZZ(C,SNIFFER,OFF) // Turn sniffer output off
+  DCCDecoder::onoff(false);
+#endif
 ZZ(C,WIFI,OFF) // Disable WiFi
         CHECK(stream==&USB_SERIAL, WiFi can only be disabled from USB Serial)
         WifiPreferences::enable(false);
@@ -465,7 +469,7 @@ ZZ(C,WIFI,HOSTNAME,hostname) // Set WiFi hostname (in quotes)
 ZZ(C,WIFI,DEFAULT) // Set WiFi to default credentials
   WifiPreferences::clear(); 
   WifiESP::setup();
-ZZ(C,WIFI,ssid,password) // Set WiFi ssid and password (in quotes)
+ZZ(C,WIFI,ssid,password) // Set WiFi ssid and password (in quotes, like "mySSID" and "myPassword")
   CHECKQ(ssid)
   CHECKQ(password)
   WifiPreferences::saveSTA(q_ssid, q_password,true); 
@@ -559,18 +563,19 @@ ZZ(a,address,activate) // Send dcc accessory command to linear address
 /// activate: 0=deactivate, 1=activate
         CHECK(activate==0 || activate ==1, invalid activate 0..1 )
         DCC::setAccessory((address - 1) / 4 + 1,(address - 1)  % 4 ,activate ^ accessoryCommandReverse);                                    
-ZZ(A,address,value) // Send DCC extended accessory (Aspect) command
+ZZ(A,address,aspect) // Send DCC extended accessory (Aspect) command
         // signalAspectEvent returns true if the aspect is destined
         // for a defined DCCX_SIGNAL which will handle all the RAG flags
         // and ON* handlers.
         // Otherwise false so the parser should send the command directly 
-#ifdef EXRAIL_ACTIVE
-        if (!RMFT2::signalAspectEvent(address,value)) 
+        CHECK(aspect == (aspect & 0x1F), invalid aspect 0..31)
+        #ifdef EXRAIL_ACTIVE
+        if (!RMFT2::signalAspectEvent(address,aspect)) 
 #endif
-        DCC::setExtendedAccessory(address,value);
+        DCC::setExtendedAccessory(address,aspect);
 
-ZZ(w,loco,cv,value) // POM write cv on MAIN track
-        DCC::writeCVByteMain(loco,cv,value);
+ZZ(w,loco,cv,cValue) // POM write cv on MAIN track
+        DCC::writeCVByteMain(loco,cv,cValue);
 ZZ(r,loco,cv) // POM read cv on MAIN track
         CHECK(DCCWaveform::isRailcom(),Railcom not active)
         EXPECT_CALLBACK
@@ -588,26 +593,22 @@ ZZ(m,loco,accelerating,braking) // Set momentum for loco
         CHECK(DCC::setMomentum(loco,accelerating,braking))
 
         // todo  reorder for more sensible doco. 
-ZZ(W,cv,value,ignore1,ignore2) // Write cv value on PROG track (Deprecated)
-        EXPECT_CALLBACK DCC::writeCVByte(cv,value, callback_W);        
 ZZ(W,loco) // Write loco address on PROG track
         EXPECT_CALLBACK DCC::setLocoId(loco,callback_Wloco);
 ZZ(W,CONSIST,loco,REVERSE) // Write consist address and reverse flag on PROG track 
         EXPECT_CALLBACK DCC::setConsistId(loco,true,callback_Wconsist);
 ZZ(W,CONSIST,loco) // write consist address on PROG track       
         EXPECT_CALLBACK DCC::setConsistId(loco,false,callback_Wconsist);
-ZZ(W,cv,value)   // Write cv value on PROG track
-        EXPECT_CALLBACK DCC::writeCVByte(cv,value, callback_W);
+ZZ(W,cv,cValue)   // Write cv value on PROG track
+        EXPECT_CALLBACK DCC::writeCVByte(cv,cValue, callback_W);
 ZZ(W,cv,bitPosition,bitValue) // Write cv bit on prog track
         EXPECT_CALLBACK DCC::writeCVBit(cv,bitPosition,bitValue,callback_W);
-ZZ(V,cv,value) // Fast read cv with expected value
-        EXPECT_CALLBACK DCC::verifyCVByte(cv,value, callback_Vbyte);
+ZZ(V,cv,cValue) // Fast read cv with expected value
+        EXPECT_CALLBACK DCC::verifyCVByte(cv,cValue, callback_Vbyte);
 ZZ(V,cv,bitPosition,bitValue) // Fast read bit with expected value
         EXPECT_CALLBACK DCC::verifyCVBit(cv,bitPosition,bitValue,callback_Vbit);  
 ZZ(B,cv,bitPosition,bitValue)  // Write cv bit
         EXPECT_CALLBACK DCC::writeCVBit(cv,bitPosition,bitValue,callback_B);
-ZZ(R,cv,ignore1,ignore2) // Read cv value on PROG track (Deprecated)
-        EXPECT_CALLBACK DCC::readCV(cv,callback_R);
 ZZ(R,LOCOID) // Read loco id (ignoring consist) on PROG track
         EXPECT_CALLBACK DCC::getLocoId(callback_Rloco);
 ZZ(R,CONSIST) // Read consist id on PROG track
@@ -642,13 +643,15 @@ ZZ(+) // Complex WiFi AT command interface (Not ESP32)
 #endif
 #endif
 
-// ZZ(M,ignore,d0,d1,d2,d3,d4,d5) // Send up to 5 byte DCC packet on MAIN track (all d values in hex)
+// ZZ(M,ignore,d0,d1,[d2,d3,d4,d5]) // Send up to 5 byte DCC packet on MAIN track (values in hex). 
+/// The ignore value is for backward compatibility, use 0. 
 ZZ_nodoc(M,ignore,d0,d1,d2,d3,d4,d5) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3,(byte)d4,(byte)d5}; DCCWaveform::mainTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(M,ignore,d0,d1,d2,d3,d4) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3,(byte)d4}; DCCWaveform::mainTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(M,ignore,d0,d1,d2,d3) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3}; DCCWaveform::mainTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(M,ignore,d0,d1,d2) byte packet[]={(byte)d0,(byte)d1,(byte)d2}; DCCWaveform::mainTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(M,ignore,d0,d1) byte packet[]={(byte)d0,(byte)d1}; DCCWaveform::mainTrack.schedulePacket(packet,sizeof(packet),3);
-// ZZ(P,ignore,d0,d1,d2,d3,d4,d5) // Send up to 5 byte DCC packet on PROG track (all d values in hex)
+// ZZ(P,ignore,d0,d1[,d2,d3,d4,d5]) // Send up to 5 byte DCC packet on PROG track (all d values in hex).
+/// The ignore value is for backward compatibility, use 0.
 ZZ_nodoc(P,ignore,d0,d1,d2,d3,d4,d5) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3,(byte)d4,(byte)d5}; DCCWaveform::progTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(P,ignore,d0,d1,d2,d3,d4) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3,(byte)d4}; DCCWaveform::progTrack.schedulePacket(packet,sizeof(packet),3);
 ZZ_nodoc(P,ignore,d0,d1,d2,d3) byte packet[]={(byte)d0,(byte)d1,(byte)d2,(byte)d3}; DCCWaveform::progTrack.schedulePacket(packet,sizeof(packet),3);

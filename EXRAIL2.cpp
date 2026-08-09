@@ -500,14 +500,14 @@ bool RMFT2::skipIfBlock() {
 /* static */ void RMFT2::readLocoCallback(int16_t cv) {
   if (cv <= 0) {
     DIAG(F("CV read error"));
-    progtrackLocoId = -1;
+    progtrackLocoId = 0;
     return;
   }
   if (cv & LONG_ADDR_MARKER) {               // maker bit indicates long addr
     progtrackLocoId = cv ^ LONG_ADDR_MARKER; // remove marker bit to get real long addr
     if (progtrackLocoId <= HIGHEST_SHORT_ADDR ) {     // out of range for long addr
       DIAG(F("Long addr %d <= %d unsupported\n"), progtrackLocoId, HIGHEST_SHORT_ADDR);
-      progtrackLocoId = -1;
+      progtrackLocoId = 0;
     }
   } else {
     progtrackLocoId=cv;
@@ -1573,11 +1573,15 @@ void RMFT2::railsyncEvent(bool on) {
   if (Diag::CMD)
    DIAG(F("railsyncEvent : %d"), on);
   if (on) {
-    if (onRailSyncOnLookup)
+    if (onRailSyncOnLookup && onRailSyncOnLookup->size() > 0)
       onRailSyncOnLookup->handleEvent(F("RAILSYNCON"), 0);
   } else {
-    if (onRailSyncOffLookup)
+    if (onRailSyncOffLookup && onRailSyncOffLookup->size() > 0)
       onRailSyncOffLookup->handleEvent(F("RAILSYNCOFF"), 0);
+    else {
+      TrackManager::setTrackPower(TRACK_MODE_BOOST, POWERMODE::OFF);
+      DIAG(F("Railsync signal went off and no ONRAILSYNCOFF handler was defined. All booster tracks switched off"));
+    }
   }
 }
 #endif
