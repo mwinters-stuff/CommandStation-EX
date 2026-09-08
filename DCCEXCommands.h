@@ -365,7 +365,7 @@ ZZ(D,ACK,OFF) // Disable PROG track diagnostics
 ZZ(D,CABS)  // Diagnostic display loco state table
         DCC::displayCabList(stream);
 ZZ(D,RAM)  // Diagnostic display free RAM
-        DIAG(F("Free memory=%d"), DCCTimer::getMinimumFreeMemory());
+        DIAG(F("Free memory=%dkb" ), DCCTimer::getMinimumFreeMemory()/1024);
 ZZ(D,CMD,ON) // Enable command input diagnostics
         Diag::CMD = true;
 ZZ(D,CMD,OFF) // Disable command input diagnostics
@@ -623,7 +623,18 @@ ZZ(r,loco,cv) // POM read cv on MAIN track
         DCC::readCVByteMain(loco,cv,callback_r);
 ZZ(b,loco,cv,bitPosition,bitValue)  // POM write cv bit on main track
         DCC::writeCVBitMain(loco,cv,bitPosition,bitValue);
- 
+
+ZZ(w,A,linearaddress,cv,value) // POM write basic accessory decoder cv on main track
+        CHECK(linearaddress>0 && linearaddress<=2044, linearaddress 1..2044)
+        CHECK(cv>0 && cv<= 1024, CV 0..1024)
+        CHECK(value>=0 && value<=255, value 0..255)
+        DCC::writeAccessoryCVByteMain(linearaddress,cv,value);
+ZZ(w,E,linearaddress,cv,value) // POM write extended accessory decoder cv on main track
+        CHECK(linearaddress>0 && linearaddress<=2044, linearaddress 1..2044)
+        CHECK(cv>0 && cv<= 1024, CV 0..1024)
+        CHECK(value>=0 && value<=255, value 0..255)
+        DCC::writeExtendedAccessoryCVByteMain(linearaddress,cv,value);
+
 ZZ(m,LINEAR) // Set Momentum algorithm to linear acceleration
         DCC::linearAcceleration=true;
 ZZ(m,POWER) // Set momentum algorithm to very based on difference between current speed and throttle setting
