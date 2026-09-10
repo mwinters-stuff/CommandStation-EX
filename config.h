@@ -56,7 +56,7 @@ The configuration file for DCC-EX Command Station
 //   |
 //   +-----------------------v
 //
-#ifdef ARDUINO_ARCH_ESP32
+#ifndef DCC_TEST
 #define MOTOR_SHIELD_TYPE EXCSB1
 #else
 #define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
@@ -87,7 +87,7 @@ The configuration file for DCC-EX Command Station
 // NOTE: Not supported on Arduino Uno or Nano
 // Set to false if you not even want it on the Arduino Mega
 //
-#ifdef ARDUINO_ARCH_ESP32
+#ifndef DCC_TEST
 #define ENABLE_WIFI true
 #else
 #define ENABLE_WIFI false
@@ -114,12 +114,12 @@ The configuration file for DCC-EX Command Station
 // is set (recommended), that password will be used for AP mode.
 // The AP mode password must be at least 8 characters long.
 //
-#include ".ssid.h"
+// #include ".ssid.h"
 //
 // WIFI_HOSTNAME: You can change this if you have more than one
 // CS to make them show up with different names on the network.
 // Otherwise do not touch.
-#ifdef ARDUINO_ARCH_ESP32
+#ifndef DCC_TEST
 #define WIFI_HOSTNAME "dccex"
 #else
 #define WIFI_HOSTNAME "dccex-test"
@@ -154,7 +154,7 @@ The configuration file for DCC-EX Command Station
 // on the W5100/W5500 ethernet chip or an STM32 CS with builin ethernet like the F429ZI.
 // This is not for Wifi. You will then need the Arduino Ethernet library as well.
 //
-#ifndef ARDUINO_ARCH_ESP32
+#ifdef DCC_TEST
 #define ENABLE_ETHERNET true
 #endif
 
