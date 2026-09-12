@@ -56,7 +56,9 @@ You must use Version 5.6.x
 #include "DCCDecoder.h"
 #include "NodeManager.h"
 
-#include <ArduinoOTA.h>
+#if WIFI_ON || ETHERNET_ON
+#include "EthernetOTA.h"
+#endif
 Sniffer *dccSniffer = NULL;
 bool DCCDecoder::active = false;
 #endif // ARDUINO_ARCH_ESP32
@@ -139,6 +141,9 @@ void setup()
 
 #if ETHERNET_ON
   EthernetInterface::setup();
+  #if OTA_AUTO_INIT
+    Diag::OTA = true;
+  #endif // OTA_AUTO_INIT
 #endif // ETHERNET_ON
   
   // Responsibility 3: Start the DCC engine.
@@ -224,48 +229,49 @@ void loop()
 #endif
 #endif //WIFI_ON
 
- // Responsibility 4: Optionally handle Arduino OTA updates
+ // Responsibility 4: Optionally handle OTA updates
   if (Diag::OTA) {
     static bool otaInitialised = false;
     // Initialise OTA if not already done
     if (!otaInitialised) {
-      ArduinoOTA.setHostname(WIFI_HOSTNAME);
-      // Prevent locos from moving during OTA
-      ArduinoOTA.onStart([]() {
-        // Emergency stop all locos
+      EthernetOTA.setHostname(
+    #if ETHERNET_ON
+        ETHERNET_HOSTNAME
+    #else
+        WIFI_HOSTNAME
+    #endif
+      );
+      EthernetOTA.onStart([]() {
         DCC::setThrottle(0,1,1);
-        // Disable tracks power
         TrackManager::setMainPower(POWERMODE::OFF);
         TrackManager::setProgPower(POWERMODE::OFF);
-        // Broadcast power status
         CommandDistributor::broadcastPower();
         DISPLAY_START (
           LCD(0,F("OTA update"));
           LCD(1,F("In progress..."));
         );
       });
-      ArduinoOTA.onEnd([]() {
+      EthernetOTA.onEnd([]() {
         DISPLAY_START (
           LCD(0,F("OTA update"));
           LCD(1,F("Complete"));
         );
       });
-      ArduinoOTA.onError([](ota_error_t error) {
+      EthernetOTA.onError([](int error) {
         DISPLAY_START (
           LCD(0,F("OTA update"));
           LCD(1,F("Error: %d"), error);
         );
       });
-      // Set OTA password if defined
       #ifdef OTA_AUTH
-        ArduinoOTA.setPassword(OTA_AUTH);
+        EthernetOTA.setPassword(OTA_AUTH);
       #endif // OTA_AUTH
-      ArduinoOTA.begin();
+      EthernetOTA.begin();
       otaInitialised = true;
     }
     // Handle OTA if initialised
     else {
-      ArduinoOTA.handle();
+      EthernetOTA.handle();
     }
   }
 
