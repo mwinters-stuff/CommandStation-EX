@@ -32,6 +32,8 @@ void NodeManager::cast(StringBuffer * buffer) {
 bool NodeManager::isThrottleNode() {
     return true; // default to true for non-ESP32 platforms
 }
+void NodeManager::castVpin(VPIN vpin, int16_t count,int16_t value) { (void)vpin; (void)count; (void)value; }
+void NodeManager::castVpin(VPIN vpin, int16_t count,int16_t value, int16_t param1, int16_t param2) { (void)vpin; (void)count; (void)value; (void)param1; (void)param2; }
 #else
 #include <AsyncUDP.h>
 #include <WiFiUdp.h>
@@ -88,6 +90,22 @@ void NodeManager::cast(StringBuffer * buffer) {
     if (!started || buffer == nullptr || buffer->getLength() <= 0) return;    
     udpNodeTx.print(buffer->getString());
     if (Diag::NODE) DIAG(F("Node out: %s"), buffer->getString());
+}
+
+void NodeManager::castVpin(VPIN vpin, int16_t count,int16_t value) {
+    if (!started) return;
+    if (!IODevice::isSharedWrite(vpin, count)) return; // only send if this is a shared write
+    StringBuffer buffer(128); 
+    StringFormatter::send(&buffer, F("<z %d %d %d>"), vpin, value,count);
+    cast(&buffer);
+}
+
+void NodeManager::castVpin(VPIN vpin, int16_t count,int16_t value, int16_t param1, int16_t param2) {
+    if (!started) return;
+    if (!IODevice::isSharedWrite(vpin, count)) return; // only send if this is a shared write
+    StringBuffer buffer(128);
+    StringFormatter::send(&buffer, F("<z %d %d %d %d %d>"), vpin, value,(uint16_t)param1,param2,count);
+    cast(&buffer);
 }
 
 void NodeManager::parse(byte * cmd) {

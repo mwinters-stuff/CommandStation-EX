@@ -23,12 +23,15 @@
 #include <Arduino.h>
 #include "FSH.h"
 #include "StringBuffer.h"
+#include "IODevice.h"
 
 class NodeManager {
     public:
         static void setup(bool throttleNode);
         static void cast(StringBuffer * writer); 
         static void cast(const FSH* format...);
+        static void castVpin(VPIN vpin, int16_t count,int16_t value);
+        static void castVpin(VPIN vpin, int16_t count,int16_t value, int16_t param1, int16_t param2);
         static void parse(byte * cmd);
         static bool isThrottleNode();
    private:
