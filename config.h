@@ -56,10 +56,12 @@ The configuration file for DCC-EX Command Station
 //   |
 //   +-----------------------v
 //
-#ifndef DCC_TEST
-#define MOTOR_SHIELD_TYPE EXCSB1
-#else
-#define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
+#ifndef DCCEX_NODE
+  #ifndef DCC_TEST
+    #define MOTOR_SHIELD_TYPE EXCSB1
+  #else
+    #define MOTOR_SHIELD_TYPE STANDARD_MOTOR_SHIELD
+  #endif
 #endif
 //
 /////////////////////////////////////////////////////////////////////////////////////
