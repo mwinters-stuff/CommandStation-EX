@@ -8,7 +8,10 @@ For a directly connected ESP32 pixel string, use the RMT driver instead of a See
 
 The parameters are the first vpin, pixel count, ESP32 data GPIO and optional colour/speed mode. The sender runs on ESP32 core 0; the Arduino application loop runs on core 1. With DCC RMT enabled, this driver reserves channels starting at channel 4, after the channels used by the main and programming tracks. This shared use is supported on the classic ESP32; other ESP32 variants may not have free RMT transmit channels.
 
-`NEOPIXEL_CHASE(firstVpin,count,delay,brightness)` is an EXRAIL command for an RGB test pattern. It lights pixels red, green and blue in sequence, waits the specified milliseconds between pixels, then clears the range. Brightness is 0 (off) to 255 (full) and defaults to 255. Use `FOLLOW` to repeat the sequence. Up to 256 pixels can be scanned.
+For the ESP32 RMT driver, `<C NEOPIXEL CHASE>` runs the same red/green/blue
+test once across the configured strip and then clears it. Add an optional
+brightness from 0 to 255, for example `<C NEOPIXEL CHASE 64>`. This command
+uses the configured `HAL(NeoPixelRMT,...)` strip and does not repeat.
 
 
 1.  Defining the hardware driver:

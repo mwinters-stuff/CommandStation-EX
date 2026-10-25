@@ -419,6 +419,13 @@ ZZ(D,SENSORS) // Show sensor task list diagnostics
   Sensor::dumpAll(stream);
 ZZ(C,PROGBOOST) // Configure PROG track boost
         TrackManager::progTrackBoosted=true;
+#if defined(ARDUINO_ARCH_ESP32)
+ZZ(C,NEOPIXEL,CHASE) // Run the NeoPixel RMT chase at full brightness
+        CHECK(NeoPixelRMT::startChase(255),NeoPixel RMT driver not ready)
+ZZ(C,NEOPIXEL,CHASE,brightness) // Run the NeoPixel RMT chase at brightness 0..255
+        CHECK(brightness>=0 && brightness<=255,brightness value range 0..255)
+        CHECK(NeoPixelRMT::startChase(brightness),NeoPixel RMT driver not ready)
+#endif
 ZZ(C,RESET) // Reset and restart command station
         TrackManager::setTrackPower(TRACK_ALL, POWERMODE::OFF);
         DCCTimer::reset();

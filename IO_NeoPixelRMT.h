@@ -27,7 +27,8 @@
 #include "IO_NeoPixel.h"
 #include <driver/rmt.h>
 #include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
+
+#define MAX_LEDS 256
 
 class NeoPixelRMT : public IODevice {
 public:
@@ -36,6 +37,29 @@ public:
     if (nPixels > 0 && static_cast<uint32_t>(vpin) + nPixels <= 0x10000UL &&
         checkNoOverlapRange(vpin, nPixels))
       new NeoPixelRMT(vpin, nPixels, dataPin, mode);
+  }
+
+  static bool startChase(int brightness) {
+    NeoPixelRMT *device = instance();
+    if (brightness < 0 || brightness > 255 || device == nullptr ||
+        !device->_rmtReady || device->_rmtFailed || device->_pixels == nullptr ||
+        device->_on == nullptr)
+      return false;
+
+    portENTER_CRITICAL(&device->_bufferMux);
+    for (int pixel = 0; pixel < device->_nPins; pixel++)
+      device->_on[pixel] = 0;
+    device->_framePending = true;
+    portEXIT_CRITICAL(&device->_bufferMux);
+    device->_pixelChaseBrightness = brightness;
+    device->_pixelChaseIndex = 0;
+    device->_pixelChaseLastStepMicros = micros();
+    device->_pixelChaseActive = true;
+    DIAG(F("NeoPixel RMT chase VPINs:%u-%u brightness:%u"),
+         (unsigned int)device->_firstVpin,
+         (unsigned int)(device->_firstVpin + device->_nPins - 1),
+         (unsigned int)brightness);
+    return true;
   }
 
 private:
@@ -67,6 +91,8 @@ private:
 
   NeoPixelRMT(VPIN firstVpin, int nPixels, int dataPin, uint16_t mode)
       : IODevice(firstVpin, nPixels), _dataPin(dataPin) {
+    instance() = this;
+    _deviceState = DEVSTATE_INITIALISING;
     _redOffset = (mode >> 4) & 0x03;
     _greenOffset = (mode >> 2) & 0x03;
     _blueOffset = mode & 0x03;
@@ -74,40 +100,41 @@ private:
     _bytesPerPixel = _whiteOffset == _redOffset ? 3 : 4;
     _is800KHz = (mode & NEO_KHZ400) == 0;
 
-    if (nPixels <= 0 || static_cast<size_t>(nPixels) >
-        (SIZE_MAX - 2) / (_bytesPerPixel * 8)) {
-      _rmtError = ESP_ERR_INVALID_SIZE;
-      addDevice(this);
-      return;
+    if (nPixels <= 0 || static_cast<size_t>(nPixels) > MAX_LEDS) {
+      DIAG(F("NeoPixel RMT number of leds %d > max of %d"), nPixels, MAX_LEDS);
+      _deviceState = DEVSTATE_FAILED;
+    } else {
+      _pixels = static_cast<RGB *>(malloc(nPixels * sizeof(RGB)));
+      _on = static_cast<byte *>(calloc(nPixels, sizeof(byte)));
+      _frame = static_cast<RGB *>(malloc(nPixels * sizeof(RGB)));
+      _frameOn = static_cast<byte *>(malloc(nPixels * sizeof(byte)));
+      _items = static_cast<rmt_item32_t *>(malloc(
+          (static_cast<size_t>(nPixels) * _bytesPerPixel * 8 + 2) * sizeof(rmt_item32_t)));
+
+      if (_pixels == nullptr || _on == nullptr || _frame == nullptr ||
+          _frameOn == nullptr || _items == nullptr) {
+        free(_pixels);
+        free(_on);
+        free(_frame);
+        free(_frameOn);
+        free(_items);
+        _pixels = nullptr;
+        _on = nullptr;
+        _frame = nullptr;
+        _frameOn = nullptr;
+        _items = nullptr;
+        DIAG(F("NeoPixel RMT Out of Memory"));
+        _deviceState = DEVSTATE_FAILED;
+      } else {
+        memset(_pixels, 0xFF, nPixels * sizeof(RGB));
+        _channel = allocateChannel();
+        if (_channel == RMT_CHANNEL_MAX) {
+          DIAG(F("NeoPixel RMT Out of Memory"));
+          _deviceState = DEVSTATE_FAILED;
+        }
+      }
     }
 
-    _pixels = static_cast<RGB *>(malloc(nPixels * sizeof(RGB)));
-    _on = static_cast<byte *>(calloc(nPixels, sizeof(byte)));
-    _frame = static_cast<RGB *>(malloc(nPixels * sizeof(RGB)));
-    _frameOn = static_cast<byte *>(malloc(nPixels * sizeof(byte)));
-    _items = static_cast<rmt_item32_t *>(malloc(
-        (static_cast<size_t>(nPixels) * _bytesPerPixel * 8 + 2) * sizeof(rmt_item32_t)));
-
-    if (_pixels == nullptr || _on == nullptr || _frame == nullptr ||
-        _frameOn == nullptr || _items == nullptr) {
-      free(_pixels);
-      free(_on);
-      free(_frame);
-      free(_frameOn);
-      free(_items);
-      _pixels = nullptr;
-      _on = nullptr;
-      _frame = nullptr;
-      _frameOn = nullptr;
-      _items = nullptr;
-      _rmtError = ESP_ERR_NO_MEM;
-      addDevice(this);
-      return;
-    }
-
-    memset(_pixels, 0xFF, nPixels * sizeof(RGB));
-    _channel = allocateChannel();
-    if (_channel == RMT_CHANNEL_MAX) _rmtError = ESP_ERR_INVALID_ARG;
     addDevice(this);
   }
 
@@ -117,34 +144,21 @@ private:
 #else
     static uint8_t nextChannel = 0;
 #endif
-    if (nextChannel >= RMT_CHANNEL_MAX) return RMT_CHANNEL_MAX;
+    if (nextChannel >= RMT_CHANNEL_MAX) {
+      DIAG(F("NeoPixel RMT Could not allocate RMT channel"));
+      return RMT_CHANNEL_MAX;
+    }
     return static_cast<rmt_channel_t>(nextChannel++);
   }
 
   void _begin() override {
-    if (_sender != nullptr) return;
-    if (_rmtError != ESP_OK) {
-      _deviceState = DEVSTATE_FAILED;
+    if (_rmtReady) return;
+    if (_deviceState == DEVSTATE_FAILED) {
       _display();
       return;
     }
 
     _deviceState = DEVSTATE_INITIALISING;
-    BaseType_t result = xTaskCreatePinnedToCore(
-        senderTask, "NeoPixelRMT", 4096, this, 1, &_sender, 0);
-    if (result != pdPASS) {
-      _rmtError = ESP_ERR_NO_MEM;
-      _deviceState = DEVSTATE_FAILED;
-      _display();
-    }
-  }
-
-  static void senderTask(void *arg) {
-    static_cast<NeoPixelRMT *>(arg)->runSender();
-  }
-
-  void runSender() {
-    _sender = xTaskGetCurrentTaskHandle();
     rmt_config_t config = RMT_DEFAULT_CONFIG_TX(
         static_cast<gpio_num_t>(_dataPin), _channel);
     config.clk_div = 2;
@@ -153,38 +167,31 @@ private:
     config.tx_config.idle_output_en = true;
     config.tx_config.idle_level = RMT_IDLE_LEVEL_LOW;
 
-    _rmtError = rmt_config(&config);
-    if (_rmtError == ESP_OK) _rmtError = rmt_driver_install(_channel, 0, 0);
+    auto _rmtError = rmt_config(&config);
+    if (_rmtError == ESP_OK) {
+      _rmtError = rmt_driver_install(_channel, 0, 0);
+    }
     if (_rmtError != ESP_OK) {
       _rmtFailed = true;
-      vTaskDelete(nullptr);
+      _deviceState = DEVSTATE_FAILED;
+      _display();
       return;
     }
 
     _rmtReady = true;
-    bool sendFrame = true;
-    for (;;) {
-      if (sendFrame) {
-        copyFrame();
-        encodeFrame();
-        _rmtError = rmt_write_items(_channel, _items, _itemCount, true);
-        if (_rmtError != ESP_OK) {
-          _rmtFailed = true;
-          _rmtReady = false;
-          vTaskDelete(nullptr);
-          return;
-        }
-      }
-      ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-      sendFrame = true;
-    }
   }
 
-  void copyFrame() {
+  bool copyFrame() {
+    bool framePending;
     portENTER_CRITICAL(&_bufferMux);
-    memcpy(_frame, _pixels, _nPins * sizeof(RGB));
-    memcpy(_frameOn, _on, _nPins * sizeof(byte));
+    framePending = _framePending;
+    if (framePending) {
+      memcpy(_frame, _pixels, _nPins * sizeof(RGB));
+      memcpy(_frameOn, _on, _nPins * sizeof(byte));
+      _framePending = false;
+    }
     portEXIT_CRITICAL(&_bufferMux);
+    return framePending;
   }
 
   void encodeFrame() {
@@ -228,7 +235,6 @@ private:
   }
 
   void _loop(unsigned long currentMicros) override {
-    (void)currentMicros;
     if (_rmtFailed && _deviceState != DEVSTATE_FAILED) {
       _deviceState = DEVSTATE_FAILED;
       _display();
@@ -236,6 +242,80 @@ private:
       _deviceState = DEVSTATE_NORMAL;
       _display();
     }
+
+    updateChase(currentMicros);
+    if (!_rmtReady || _rmtFailed) return;
+
+    if (_transmitting) {
+      auto _rmtError = rmt_wait_tx_done(_channel, 0);
+      if (_rmtError == ESP_ERR_TIMEOUT) return;
+      if (_rmtError != ESP_OK) {
+        _rmtFailed = true;
+        _rmtReady = false;
+        _deviceState = DEVSTATE_FAILED;
+        _display();
+        return;
+      }
+      _transmitting = false;
+    }
+
+    if (!copyFrame()) return;
+    encodeFrame();
+    auto _rmtError = rmt_write_items(_channel, _items, _itemCount, false);
+    if (_rmtError != ESP_OK) {
+      _rmtFailed = true;
+      _rmtReady = false;
+      _deviceState = DEVSTATE_FAILED;
+      _display();
+      return;
+    }
+    _transmitting = true;
+  }
+
+  void updateChase(unsigned long currentMicros) {
+    if (!_pixelChaseActive) return;
+
+    portENTER_CRITICAL(&_bufferMux);
+    if (_pixelChaseIndex >= _nPins) {
+      if (static_cast<uint32_t>(currentMicros - _pixelChaseHoldStartedMicros) <
+          60000000UL) {
+        portEXIT_CRITICAL(&_bufferMux);
+        return;
+      }
+      memset(_on, 0, _nPins * sizeof(byte));
+      _pixelChaseActive = false;
+      _framePending = true;
+      portEXIT_CRITICAL(&_bufferMux);
+      DIAG(F("NeoPixel RMT chase cleared VPINs:%u-%u after 60 seconds"),
+           (unsigned int)_firstVpin,
+           (unsigned int)(_firstVpin + _nPins - 1));
+      return;
+    }
+
+    if (static_cast<uint32_t>(currentMicros - _pixelChaseLastStepMicros) < 100000UL) {
+      portEXIT_CRITICAL(&_bufferMux);
+      return;
+    }
+    _pixelChaseLastStepMicros = currentMicros;
+    uint16_t pixel = _pixelChaseIndex;
+    RGB colour;
+    switch (pixel % 3) {
+      case 0: colour = {static_cast<byte>(_pixelChaseBrightness), 0, 0}; break;
+      case 1: colour = {0, static_cast<byte>(_pixelChaseBrightness), 0}; break;
+      default: colour = {0, 0, static_cast<byte>(_pixelChaseBrightness)}; break;
+    }
+    _pixels[pixel] = colour;
+    _on[pixel] = 1;
+    _pixelChaseIndex++;
+    if (_pixelChaseIndex == _nPins)
+      _pixelChaseHoldStartedMicros = currentMicros;
+    _framePending = true;
+    portEXIT_CRITICAL(&_bufferMux);
+
+    DIAG(F("NeoPixel RMT chase VPIN:%u RGB:%u,%u,%u"),
+         (unsigned int)(_firstVpin + pixel),
+         (unsigned int)colour.red, (unsigned int)colour.green,
+         (unsigned int)colour.blue);
   }
 
   int _read(VPIN vpin) override {
@@ -254,8 +334,8 @@ private:
     portENTER_CRITICAL(&_bufferMux);
     bool changed = _on[pixel] != on;
     _on[pixel] = on;
+    if (changed) _framePending = true;
     portEXIT_CRITICAL(&_bufferMux);
-    if (changed) notifySender();
   }
 
   void _writeAnalogue(VPIN vpin, int colourRG, uint8_t onoff,
@@ -272,25 +352,23 @@ private:
                    _on[pixel] != (onoff ? 1 : 0);
     _pixels[pixel] = colour;
     _on[pixel] = onoff ? 1 : 0;
+    if (changed) _framePending = true;
     portEXIT_CRITICAL(&_bufferMux);
-    if (changed) notifySender();
-  }
-
-  void notifySender() {
-    if (_rmtReady && !_rmtFailed && _sender != nullptr)
-      xTaskNotifyGive(_sender);
   }
 
   void _display() override {
-    DIAG(F("NeoPixel RMT GPIO:%d Vpins %u-%u %S error:%d"), _dataPin,
+    DIAG(F("NeoPixel RMT GPIO:%d Vpins %u-%u %S"), _dataPin,
          (int)_firstVpin, (int)_firstVpin + _nPins - 1,
-         _deviceState == DEVSTATE_FAILED ? F("OFFLINE") : F(""),
-         static_cast<int>(_rmtError));
+         _deviceState == DEVSTATE_FAILED ? F("OFFLINE") : F("ONLINE"));
+  }
+
+  static NeoPixelRMT *&instance() {
+    static NeoPixelRMT *device = nullptr;
+    return device;
   }
 
   const int _dataPin;
   rmt_channel_t _channel = RMT_CHANNEL_MAX;
-  TaskHandle_t _sender = nullptr;
   RGB *_pixels = nullptr;
   byte *_on = nullptr;
   RGB *_frame = nullptr;
@@ -303,9 +381,15 @@ private:
   byte _blueOffset = 2;
   byte _whiteOffset = 1;
   bool _is800KHz = true;
+  bool _framePending = true;
+  bool _transmitting = false;
+  bool _pixelChaseActive = false;
+  uint16_t _pixelChaseIndex = 0;
+  uint8_t _pixelChaseBrightness = 255;
+  unsigned long _pixelChaseLastStepMicros = 0;
+  unsigned long _pixelChaseHoldStartedMicros = 0;
   volatile bool _rmtReady = false;
   volatile bool _rmtFailed = false;
-  volatile esp_err_t _rmtError = ESP_OK;
   portMUX_TYPE _bufferMux = portMUX_INITIALIZER_UNLOCKED;
 };
 

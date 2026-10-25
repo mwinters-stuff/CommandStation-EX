@@ -1205,45 +1205,6 @@ void RMFT2::loop2() {
     }
     break;
 
-  case OPCODE_NEOPIXEL_CHASE: {
-    uint16_t count = getOperand(1);
-    unsigned long interval = getOperand(2);
-    uint16_t brightness = getOperand(3);
-    if (brightness > 255) brightness = 255;
-    if (operand <= 0 || count == 0 || count > 256) {
-      pixelChaseActive = false;
-      pixelChaseFinishing = false;
-      pixelChaseIndex = 0;
-      break;
-    }
-    if (pixelChaseFinishing) {
-      pixelChaseActive = false;
-      pixelChaseFinishing = false;
-      pixelChaseIndex = 0;
-      break;
-    }
-    if (!pixelChaseActive) {
-      pixelChaseActive = true;
-      pixelChaseIndex = 0;
-    }
-    if (pixelChaseIndex >= count) {
-      IODevice::writeAnalogueRange(operand, 0, 0, 0, count);
-      pixelChaseFinishing = true;
-      delayMe(interval);
-      return;
-    }
-
-    VPIN pixelVpin = operand + pixelChaseIndex;
-    switch (pixelChaseIndex % 3) {
-      case 0: IODevice::writeAnalogue(pixelVpin, brightness << 8, 1, 0); break;
-      case 1: IODevice::writeAnalogue(pixelVpin, brightness, 1, 0); break;
-      default: IODevice::writeAnalogue(pixelVpin, 0, 1, brightness); break;
-    }
-    pixelChaseIndex++;
-    delayMe(interval);
-    return;
-  }
-  
   case OPCODE_WAITFORTT:  // OPCODE_WAITFOR,V(turntable_id)
     if (Turntable::ttMoving(operand)) {
       delayMe(100);

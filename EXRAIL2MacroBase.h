@@ -466,7 +466,6 @@
 ///param count Optional number of consecutive pixels to set, default 1
 ///param brightness Optional brightness from 0 (off) to 255 (full), default 255
 
-#define NEOPIXEL_CHASE(vpin,count,delay,brightness...)
 ///brief Repeatedly light pixels red, green and blue in order
 ///param vpin First VPIN in the pixel range
 ///param count Number of pixels, up to 256

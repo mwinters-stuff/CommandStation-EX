@@ -629,11 +629,6 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
    OPCODE_PAD,V(count),\
    OPCODE_PAD,V(brightness),
 
-#define NEOPIXEL_CHASE(vpin,count,delay,brightness...) OPCODE_NEOPIXEL_CHASE,V(vpin),\
-   OPCODE_PAD,V(count),\
-   OPCODE_PAD,V(delay),\
-   OPCODE_PAD,V(#brightness[0]?(brightness+0):255),
-         
 #define NEOPIXEL_SIGNAL(sigid,redcolour,ambercolour,greencolour,description...)
 #define NODE_SHARE_SCREEN0(display_id2,count...)
 #define ONACTIVATE(addr,subaddr) OPCODE_ONACTIVATE,V(addr<<2|subaddr),
