@@ -419,13 +419,6 @@ ZZ(D,SENSORS) // Show sensor task list diagnostics
   Sensor::dumpAll(stream);
 ZZ(C,PROGBOOST) // Configure PROG track boost
         TrackManager::progTrackBoosted=true;
-#if defined(ARDUINO_ARCH_ESP32)
-ZZ(C,NEOPIXEL,CHASE) // Run the NeoPixel RMT chase at full brightness
-        CHECK(NeoPixelRMT::startChase(255),NeoPixel RMT driver not ready)
-ZZ(C,NEOPIXEL,CHASE,brightness) // Run the NeoPixel RMT chase at brightness 0..255
-        CHECK(brightness>=0 && brightness<=255,brightness value range 0..255)
-        CHECK(NeoPixelRMT::startChase(brightness),NeoPixel RMT driver not ready)
-#endif
 ZZ(C,RESET) // Reset and restart command station
         TrackManager::setTrackPower(TRACK_ALL, POWERMODE::OFF);
         DCCTimer::reset();
@@ -563,6 +556,13 @@ ZZ(D,NVS) // Show all non-zero NVS values (Not Loco CVs)
 ZZ(D,NVS,value) // Show specific NVS value
   NVSTable::dump(stream,value);
 
+#if defined(ARDUINO_ARCH_ESP32)
+ZZ(o,vpin,CHASE,count,brightness) // Run a NeoPixel RMT chase over a VPIN range
+        CHECK(vpin>=0,first vpin must be positive)
+        CHECK(count>0,count must be positive)
+        CHECK(brightness>=0 && brightness<=255,brightness value range 0..255)
+        CHECK(NeoPixelRMT::startChase((VPIN)vpin,count,brightness),NeoPixel RMT range not ready or invalid)
+#endif
 ZZ(o,vpin) // Set neopixel on(vpin>0) or off(vpin<0)
         IODevice::write(abs(vpin),vpin>0);
 ZZ(o,vpin,count)  // Set multiple neopixels on(vpin>0) or off(vpin<0)

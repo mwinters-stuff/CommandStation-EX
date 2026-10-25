@@ -8,10 +8,11 @@ For a directly connected ESP32 pixel string, use the RMT driver instead of a See
 
 The parameters are the first vpin, pixel count, ESP32 data GPIO and optional colour/speed mode. The sender runs on ESP32 core 0; the Arduino application loop runs on core 1. With DCC RMT enabled, this driver reserves channels starting at channel 4, after the channels used by the main and programming tracks. This shared use is supported on the classic ESP32; other ESP32 variants may not have free RMT transmit channels.
 
-For the ESP32 RMT driver, `<C NEOPIXEL CHASE>` runs the same red/green/blue
-test once across the configured strip and then clears it. Add an optional
-brightness from 0 to 255, for example `<C NEOPIXEL CHASE 64>`. This command
-uses the configured `HAL(NeoPixelRMT,...)` strip and does not repeat.
+For the ESP32 RMT driver, `<o firstVpin CHASE count brightness>` runs the
+red/green/blue test once over the selected pixel range and then clears it.
+Brightness is 0 to 255; for example, `<o 1000 CHASE 20 64>` starts at VPIN
+1000 and chases across 20 pixels at brightness 64. The selected VPIN range
+must belong to one configured `HAL(NeoPixelRMT,...)` strip.
 
 
 1.  Defining the hardware driver:
@@ -40,7 +41,19 @@ uses the configured `HAL(NeoPixelRMT,...)` strip and does not repeat.
     Note: it IS acceptable to switch across 2 strings of pixels if they are contiguous vpin ranges.  It is also interesting that this command doesnt care if the vpins are NeoPixel or any other type, so it can be used to switch a range of other pin types. 
 
     <o [-]vpin red green blue [count [brightness]]> sets the colour and on/off status of a pin or pins. Each colour and brightness is 0..255. Brightness defaults to 255. For example, <o 1005 255 255 0> sets pin 1005 to full-brightness yellow; <o 1000 255 0 0 20 64> sets 20 pixels to dim red. To set brightness for one pixel, specify a count of 1 first.
+    <o firstVpin CHASE count brightness> runs the ESP32 RMT NeoPixel chase over the selected range.
     Note: If you set a pin to a colour, you can turn it on and off without having to reset the colour every time. This is something the adafruit seesaw library can't do and is just one of several reasons why we dont use it.  
+
+    To randomly show and hide the NeoPixels configured at VPINs 1000 and 2000,
+    run `python3 scripts/random_neopixels.py /dev/ttyUSB0`. The script sends
+    500 random `<o [-]vpin red green blue count brightness>` commands by default,
+    varying RGB color, brightness, on/off state, and LED count (1 to 5), with
+    short random delays. It prints a startup-wait message before the configured
+    startup delay.
+    Install its serial dependency with `apt-get install python3-serial` on linux
+    or on windows `python3 -m pip install pyserial`.
+    Use `--count`, `--baud`, `--min-delay`, and `--max-delay` to adjust the run;
+    pass `--help` for all options.
 
 3. Setting pixels from EXRAIL
     The new NEOPIXEL macro provides the same functionality as the <o [-]vpin red green blue [count [brightness]]> command above.

@@ -39,25 +39,34 @@ public:
       new NeoPixelRMT(vpin, nPixels, dataPin, mode);
   }
 
-  static bool startChase(int brightness) {
-    NeoPixelRMT *device = instance();
-    if (brightness < 0 || brightness > 255 || device == nullptr ||
-        !device->_rmtReady || device->_rmtFailed || device->_pixels == nullptr ||
-        device->_on == nullptr)
+  static bool startChase(VPIN firstVpin, int count, int brightness) {
+    if (count <= 0 || brightness < 0 || brightness > 255) return false;
+
+    NeoPixelRMT *device = devices();
+    while (device != nullptr &&
+           (firstVpin < device->_firstVpin ||
+            static_cast<uint32_t>(firstVpin) + count >
+                static_cast<uint32_t>(device->_firstVpin) + device->_nPins))
+      device = device->_nextNeoPixel;
+
+    if (device == nullptr || !device->_rmtReady || device->_rmtFailed ||
+        device->_pixels == nullptr || device->_on == nullptr)
       return false;
 
+    uint16_t startIndex = firstVpin - device->_firstVpin;
     portENTER_CRITICAL(&device->_bufferMux);
-    for (int pixel = 0; pixel < device->_nPins; pixel++)
-      device->_on[pixel] = 0;
-    device->_framePending = true;
-    portEXIT_CRITICAL(&device->_bufferMux);
+    memset(device->_on + startIndex, 0, count * sizeof(byte));
+    device->_pixelChaseStart = startIndex;
+    device->_pixelChaseCount = count;
     device->_pixelChaseBrightness = brightness;
     device->_pixelChaseIndex = 0;
     device->_pixelChaseLastStepMicros = micros();
     device->_pixelChaseActive = true;
+    device->_framePending = true;
+    portEXIT_CRITICAL(&device->_bufferMux);
     DIAG(F("NeoPixel RMT chase VPINs:%u-%u brightness:%u"),
-         (unsigned int)device->_firstVpin,
-         (unsigned int)(device->_firstVpin + device->_nPins - 1),
+         (unsigned int)firstVpin,
+         (unsigned int)(firstVpin + count - 1),
          (unsigned int)brightness);
     return true;
   }
@@ -91,7 +100,6 @@ private:
 
   NeoPixelRMT(VPIN firstVpin, int nPixels, int dataPin, uint16_t mode)
       : IODevice(firstVpin, nPixels), _dataPin(dataPin) {
-    instance() = this;
     _deviceState = DEVSTATE_INITIALISING;
     _redOffset = (mode >> 4) & 0x03;
     _greenOffset = (mode >> 2) & 0x03;
@@ -135,6 +143,8 @@ private:
       }
     }
 
+    _nextNeoPixel = devices();
+    devices() = this;
     addDevice(this);
   }
 
@@ -276,19 +286,19 @@ private:
     if (!_pixelChaseActive) return;
 
     portENTER_CRITICAL(&_bufferMux);
-    if (_pixelChaseIndex >= _nPins) {
+    if (_pixelChaseIndex >= _pixelChaseCount) {
       if (static_cast<uint32_t>(currentMicros - _pixelChaseHoldStartedMicros) <
           60000000UL) {
         portEXIT_CRITICAL(&_bufferMux);
         return;
       }
-      memset(_on, 0, _nPins * sizeof(byte));
+      memset(_on + _pixelChaseStart, 0, _pixelChaseCount * sizeof(byte));
       _pixelChaseActive = false;
       _framePending = true;
       portEXIT_CRITICAL(&_bufferMux);
       DIAG(F("NeoPixel RMT chase cleared VPINs:%u-%u after 60 seconds"),
-           (unsigned int)_firstVpin,
-           (unsigned int)(_firstVpin + _nPins - 1));
+           (unsigned int)(_firstVpin + _pixelChaseStart),
+           (unsigned int)(_firstVpin + _pixelChaseStart + _pixelChaseCount - 1));
       return;
     }
 
@@ -297,9 +307,10 @@ private:
       return;
     }
     _pixelChaseLastStepMicros = currentMicros;
-    uint16_t pixel = _pixelChaseIndex;
+    uint16_t pixel = _pixelChaseStart + _pixelChaseIndex;
+    uint16_t chasePixel = _pixelChaseIndex;
     RGB colour;
-    switch (pixel % 3) {
+    switch (chasePixel % 3) {
       case 0: colour = {static_cast<byte>(_pixelChaseBrightness), 0, 0}; break;
       case 1: colour = {0, static_cast<byte>(_pixelChaseBrightness), 0}; break;
       default: colour = {0, 0, static_cast<byte>(_pixelChaseBrightness)}; break;
@@ -307,7 +318,7 @@ private:
     _pixels[pixel] = colour;
     _on[pixel] = 1;
     _pixelChaseIndex++;
-    if (_pixelChaseIndex == _nPins)
+    if (_pixelChaseIndex == _pixelChaseCount)
       _pixelChaseHoldStartedMicros = currentMicros;
     _framePending = true;
     portEXIT_CRITICAL(&_bufferMux);
@@ -362,11 +373,12 @@ private:
          _deviceState == DEVSTATE_FAILED ? F("OFFLINE") : F("ONLINE"));
   }
 
-  static NeoPixelRMT *&instance() {
-    static NeoPixelRMT *device = nullptr;
-    return device;
+  static NeoPixelRMT *&devices() {
+    static NeoPixelRMT *firstDevice = nullptr;
+    return firstDevice;
   }
 
+  NeoPixelRMT *_nextNeoPixel = nullptr;
   const int _dataPin;
   rmt_channel_t _channel = RMT_CHANNEL_MAX;
   RGB *_pixels = nullptr;
@@ -384,6 +396,8 @@ private:
   bool _framePending = true;
   bool _transmitting = false;
   bool _pixelChaseActive = false;
+  uint16_t _pixelChaseStart = 0;
+  uint16_t _pixelChaseCount = 0;
   uint16_t _pixelChaseIndex = 0;
   uint8_t _pixelChaseBrightness = 255;
   unsigned long _pixelChaseLastStepMicros = 0;
