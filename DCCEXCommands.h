@@ -562,6 +562,15 @@ ZZ(o,vpin,CHASE,count,brightness) // Run a NeoPixel RMT chase over a VPIN range
         CHECK(count>0,count must be positive)
         CHECK(brightness>=0 && brightness<=255,brightness value range 0..255)
         CHECK(NeoPixelRMT::startChase((VPIN)vpin,count,brightness),NeoPixel RMT range not ready or invalid)
+// FLASH is also a storage macro, so preserve it while registering this keyword.
+#pragma push_macro("FLASH")
+#undef FLASH
+ZZ(o,vpin,FLASH,count,brightness) // Cycle a NeoPixel RMT range through white, red, green, blue and off
+        CHECK(vpin>=0,first vpin must be positive)
+        CHECK(count>0,count must be positive)
+        CHECK(brightness>=0 && brightness<=255,brightness value range 0..255)
+        CHECK(NeoPixelRMT::startFlash((VPIN)vpin,count,brightness),NeoPixel RMT range not ready or invalid)
+#pragma pop_macro("FLASH")
 #endif
 ZZ(o,vpin) // Set neopixel on(vpin>0) or off(vpin<0)
         IODevice::write(abs(vpin),vpin>0);

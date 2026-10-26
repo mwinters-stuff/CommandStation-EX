@@ -14,6 +14,10 @@ red/green/blue test once over the selected pixel range and then clears it.
 Brightness is 0 to 255; for example, `<o 1000 CHASE 20 64>` starts at VPIN
 1000 and chases across 20 pixels at brightness 64. The selected VPIN range
 must belong to one configured `HAL(NeoPixelRMT,...)` strip.
+`<o firstVpin FLASH count brightness>` repeatedly displays white, red, green,
+blue, and off across the selected range, changing color once per second. For
+example, `<o 1000 FLASH 20 64>` flashes 20 pixels at brightness 64. The range
+must belong to one configured `HAL(NeoPixelRMT,...)` strip.
 
 
 1.  Defining the hardware driver:
@@ -43,6 +47,7 @@ must belong to one configured `HAL(NeoPixelRMT,...)` strip.
 
     <o [-]vpin red green blue [count [brightness]]> sets the colour and on/off status of a pin or pins. Each colour and brightness is 0..255. Brightness defaults to 255. For example, <o 1005 255 255 0> sets pin 1005 to full-brightness yellow; <o 1000 255 0 0 20 64> sets 20 pixels to dim red. To set brightness for one pixel, specify a count of 1 first.
     <o firstVpin CHASE count brightness> runs the ESP32 RMT NeoPixel chase over the selected range.
+    <o firstVpin FLASH count brightness> cycles the ESP32 RMT NeoPixel range through white, red, green, blue, and off, changing every second.
     Note: If you set a pin to a colour, you can turn it on and off without having to reset the colour every time. This is something the adafruit seesaw library can't do and is just one of several reasons why we dont use it.  
 
     To randomly show and hide the NeoPixels configured at VPINs 1000 and 2000,
