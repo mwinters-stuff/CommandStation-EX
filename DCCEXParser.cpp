@@ -127,6 +127,9 @@ Once a new OPCODE is decided upon, update this list.
 #include "EXNetworkPreferences.h"
 #include "Sensors.h"
 #include "Roster.h"
+#if defined(ARDUINO_ARCH_ESP32)
+#include "IO_NeoPixelRMT.h"
+#endif
 
 // This macro can't be created easily as a portable function because the
 // flashlist requires a far pointer for high flash access. 

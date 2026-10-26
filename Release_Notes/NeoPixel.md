@@ -2,16 +2,28 @@ NeoPixel support
 
 The IO_NeoPixel.h driver supports the adafruit neopixel seesaw board. It turns each pixel into an individual VPIN which can be given a colour and turned on or off using the new <o> command or the NEOPIXEL Exrail macro. Exrail SIGNALS can also drive a single pixel signal or multiple separate pixels.
 
-ESP32 boards can also use the hardware RMT peripheral with the `NeoPixelRMT` driver:
+For a directly connected ESP32 pixel string, use the RMT driver instead of a Seesaw board:
 
-    HAL(NeoPixelRMT, firstVpin, numberOfPixels, dataPin [, mode])
+`  HAL(NeoPixelRMT,1000,20,18,NEO_GRB)`
 
-For example, `HAL(NeoPixelRMT,1000,64,26,NEO_GRB)` assigns VPINs 1000-1063 to a 64-pixel string on GPIO 26. The default mode is `NEO_GRB | NEO_KHZ800`. RMT pixels use the existing `<o>` NeoPixel commands described below.
+The parameters are the first vpin, pixel count, ESP32 data GPIO and optional colour/speed mode.
+With DCC RMT enabled, this driver reserves channels starting at channel 4, after the channels used by the main and programming tracks. This shared use is supported on the classic ESP32; other ESP32 variants may not have free RMT transmit channels.
+
+For the ESP32 RMT driver, `<o firstVpin CHASE count brightness>` runs the
+red/green/blue test once over the selected pixel range and then clears it.
+Brightness is 0 to 255; for example, `<o 1000 CHASE 20 64>` starts at VPIN
+1000 and chases across 20 pixels at brightness 64. The selected VPIN range
+must belong to one configured `HAL(NeoPixelRMT,...)` strip.
+`<o firstVpin FLASH count brightness>` repeatedly displays white, red, green,
+blue, and off across the selected range, changing color once per second. For
+example, `<o 1000 FLASH 20 64>` flashes 20 pixels at brightness 64. The range
+must belong to one configured `HAL(NeoPixelRMT,...)` strip.
 
 
 1.  Defining the hardware driver:
-    Add a driver definition in myAutomation.h for each adafruit I2C driver.
 
+    Add a driver definition in myAutomation.h for each adafruit I2C driver.
+`
     `HAL(neoPixel, firstVpin, numberOfPixels [, mode [, i2caddress])`
       Where mode is selected from the various pixel string types which have varying
       colour order or refresh frequency. For MOST strings this mode will be NEO_GRB but for others refer to the comments in IO_NeoPixel.h
@@ -26,21 +38,37 @@ For example, `HAL(NeoPixelRMT,1000,64,26,NEO_GRB)` assigns VPINs 1000-1063 to a 
     By default, each pixel in the string is created as white but switched off.
     Each pixel has a vpin starting from the first vpin in the HAL definitions.
 
-    `<o vpin>`   switches pixel on  (same as `<z vpin>`) e.g. `<o 1005>`
-    `<o -vpin>` switches pixel off (same as `<z -vpin>`) e.g. `<o -1003>`
+    <o vpin>   switches pixel on  (same as <z vpin>) e.g. <o 1005>
+    <o -vpin> switches pixel off (same as <z -vpin>) e.g. <o -1003>
     (the z commands work on pixels the same as other gpio pins.)
 
-    `<o [-]vpin count>` switches on/off count pixels starting at vpin. e.g `<o 1000 5>`
+    <o [-]vpin count> switches on/off count pixels starting at vpin. e.g <o 1000 5>
     Note: it IS acceptable to switch across 2 strings of pixels if they are contiguous vpin ranges.  It is also interesting that this command doesnt care if the vpins are NeoPixel or any other type, so it can be used to switch a range of other pin types. 
 
-    `<o [-]vpin red green blue [count]>` sets the colour and on/off status of a pin or pins. Each colour is 0..255 e.g. `<o 1005 255 255 0>`  sets pin 1005 to bright yellow and ON, `<o -1006 0 0 255 10>`  sets pins 1006 to 1015 (10 pins) to bright blue but OFF.     
+    <o [-]vpin red green blue [count [brightness]]> sets the colour and on/off status of a pin or pins. Each colour and brightness is 0..255. Brightness defaults to 255. For example, <o 1005 255 255 0> sets pin 1005 to full-brightness yellow; <o 1000 255 0 0 20 64> sets 20 pixels to dim red. To set brightness for one pixel, specify a count of 1 first.
+    <o firstVpin CHASE count brightness> runs the ESP32 RMT NeoPixel chase over the selected range.
+    <o firstVpin FLASH count brightness> cycles the ESP32 RMT NeoPixel range through white, red, green, blue, and off, changing every second.
     Note: If you set a pin to a colour, you can turn it on and off without having to reset the colour every time. This is something the adafruit seesaw library can't do and is just one of several reasons why we dont use it.  
 
+    To randomly show and hide the NeoPixels configured at VPINs 1000 and 2000,
+    run `python3 scripts/random_neopixels.py /dev/ttyUSB0`. The script sends
+    500 random `<o [-]vpin red green blue count brightness>` commands by default,
+    varying RGB color, brightness, on/off state, and LED count (1 to 5), with
+    short random delays. It prints a startup-wait message before the configured
+    startup delay.
+    Install its serial dependency with `apt-get install python3-serial` on linux
+    or on windows `python3 -m pip install pyserial`.
+    Use `--count`, `--baud`, `--min-delay`, and `--max-delay` to adjust the run;
+    pass `--help` for all options.
+
 3. Setting pixels from EXRAIL
-    The new NEOPIXEL macro provides the same functionality as the    `<o [-]vpin red green blue [count]>` command above. 
-    `NEOPIXEL([-]vpin, red, green, blue [,count])`
+    The NEOPIXEL macro sets an RGB colour, with an optional count:
+    NEOPIXEL([-]vpin, red, green, blue [,count])
+    To set brightness, BRIGHTNESS scales the RGB values before they are encoded:
+    NEOPIXEL(700, BRIGHTNESS(90,255,50,77), 8)
+    BRIGHTNESS takes a brightness level from 0 to 255 followed by red, green, and blue components from 0 to 255. Brightness values outside the range are clamped.
     
-    Setting pixels on or off (without colour change) can be done with `SET/RESET` [currently there is no set range facility but that may be added as a general exrail thing... watch this space]
+    Setting pixels on or off (without colour change) can be done with SET/RESET [currently there is no set range facility but that may be added as a general exrail thing... watch this space]
 
     Because the pixels obey set/reset, the BLINK command can also be used to control blinking a pixel.
 
@@ -57,17 +85,23 @@ For example, `HAL(NeoPixelRMT,1000,64,26,NEO_GRB)` assigns VPINs 1000-1063 to a 
     RED(1010)  // force signal state otherwise all 3 lights will be on
     DONE 
 ```
+    For signals with 1 pixel, the NEOPIXEL_SIGNAL macro will create a signal
+`    NEOPIXEL_SIGNAL(vpin,redfx,amberfx,greenfx)`
 
-For signals with 1 pixel, the `NEOPIXEL_SIGNAL` macro will create a signal 
-`NEOPIXEL_SIGNAL(vpin,redfx,amberfx,greenfx)`
-
-** Changed... ****
-The fx values above can be created by the NeoRGB macro so a bright red would be NeoRGB(255,0,0)  bright green NeoRGB(0,255,0) and amber something like NeoRGB(255,100,0)
-NeoRGB creates a single int32_t value so it can be used in several ways as convenient.
-
+    The fx values above can be created by the NeoRGB macro: bright red is
+    `NeoRGB(255,0,0)`, bright green is `NeoRGB(0,255,0)`, and amber can be
+    `NeoRGB(255,100,0)`. To dim a colour, wrap it in `BRIGHTNESS(level,red,green,blue)`
+    inside `NeoRGB`; brightness and colour components range from 0 to 255.
+    `NeoRGB` creates one packed colour value for use in signal definitions.
 ```
 // create 1-lamp signal with NeoRGB colours
-NEOPIXEL_SIGNAL(1000,NeoRGB(255,0,0),NeoRGB(255,100,0),NeoRGB(0,255,0))`
+NEOPIXEL_SIGNAL(1000,NeoRGB(255,0,0),NeoRGB(255,100,0),NeoRGB(0,255,0))
+
+// Create a dimmer signal by setting a brightness level per aspect
+NEOPIXEL_SIGNAL(1003,
+  NeoRGB(BRIGHTNESS(90,255,0,0)),
+  NeoRGB(BRIGHTNESS(90,255,100,0)),
+  NeoRGB(BRIGHTNESS(90,0,255,0)))
 
 // Create 1-lamp signal with named colours.
 // This is better if you have multiple signals.

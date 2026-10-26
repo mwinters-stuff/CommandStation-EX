@@ -39,6 +39,72 @@ public:
       new NeoPixelRMT(vpin, nPixels, dataPin, mode);
   }
 
+  static bool startChase(VPIN firstVpin, int count, int brightness) {
+    if (count <= 0 || brightness < 0 || brightness > 255) return false;
+
+    NeoPixelRMT *device = devices();
+    while (device != nullptr &&
+           (firstVpin < device->_firstVpin ||
+            static_cast<uint32_t>(firstVpin) + count >
+                static_cast<uint32_t>(device->_firstVpin) + device->_nPins))
+      device = device->_nextNeoPixel;
+
+    if (device == nullptr || !device->_rmtReady || device->_rmtFailed ||
+        device->_pixels == nullptr || device->_on == nullptr)
+      return false;
+
+    uint16_t startIndex = firstVpin - device->_firstVpin;
+    portENTER_CRITICAL(&device->_bufferMux);
+    memset(device->_on + startIndex, 0, count * sizeof(byte));
+    device->_pixelFlashActive = false;
+    device->_pixelChaseStart = startIndex;
+    device->_pixelChaseCount = count;
+    device->_pixelChaseBrightness = brightness;
+    device->_pixelChaseIndex = 0;
+    device->_pixelChaseLastStepMicros = micros();
+    device->_pixelChaseActive = true;
+    device->_framePending = true;
+    portEXIT_CRITICAL(&device->_bufferMux);
+    DIAG(F("NeoPixel RMT chase VPINs:%u-%u brightness:%u"),
+         (unsigned int)firstVpin,
+         (unsigned int)(firstVpin + count - 1),
+         (unsigned int)brightness);
+    return true;
+  }
+
+  static bool startFlash(VPIN firstVpin, int count, int brightness) {
+    if (count <= 0 || brightness < 0 || brightness > 255) return false;
+
+    NeoPixelRMT *device = devices();
+    while (device != nullptr &&
+           (firstVpin < device->_firstVpin ||
+            static_cast<uint32_t>(firstVpin) + count >
+                static_cast<uint32_t>(device->_firstVpin) + device->_nPins))
+      device = device->_nextNeoPixel;
+
+    if (device == nullptr || !device->_rmtReady || device->_rmtFailed ||
+        device->_pixels == nullptr || device->_on == nullptr)
+      return false;
+
+    uint16_t startIndex = firstVpin - device->_firstVpin;
+    portENTER_CRITICAL(&device->_bufferMux);
+    device->_pixelChaseActive = false;
+    device->_pixelFlashStart = startIndex;
+    device->_pixelFlashCount = count;
+    device->_pixelFlashBrightness = brightness;
+    device->_pixelFlashPhase = 0;
+    device->_pixelFlashLastStepMicros = micros();
+    device->setFlashColour(0);
+    device->_pixelFlashActive = true;
+    device->_framePending = true;
+    portEXIT_CRITICAL(&device->_bufferMux);
+    DIAG(F("NeoPixel RMT flash VPINs:%u-%u brightness:%u"),
+         (unsigned int)firstVpin,
+         (unsigned int)(firstVpin + count - 1),
+         (unsigned int)brightness);
+    return true;
+  }
+
 private:
   struct RGB {
     byte red;
@@ -212,7 +278,7 @@ private:
     _itemCount = item + 1;
   }
 
-  void _loop(unsigned long) override {
+  void _loop(unsigned long currentMicros) override {
     if (_rmtFailed && _deviceState != DEVSTATE_FAILED) {
       _deviceState = DEVSTATE_FAILED;
       _display();
@@ -221,6 +287,8 @@ private:
       _display();
     }
 
+    updateChase(currentMicros);
+    updateFlash(currentMicros);
     if (!_rmtReady || _rmtFailed) return;
 
     if (_transmitting) {
@@ -247,6 +315,88 @@ private:
       return;
     }
     _transmitting = true;
+  }
+
+  void updateChase(unsigned long currentMicros) {
+    if (!_pixelChaseActive) return;
+
+    portENTER_CRITICAL(&_bufferMux);
+    if (_pixelChaseIndex >= _pixelChaseCount) {
+      if (static_cast<uint32_t>(currentMicros - _pixelChaseHoldStartedMicros) <
+          60000000UL) {
+        portEXIT_CRITICAL(&_bufferMux);
+        return;
+      }
+      memset(_on + _pixelChaseStart, 0, _pixelChaseCount * sizeof(byte));
+      _pixelChaseActive = false;
+      _framePending = true;
+      portEXIT_CRITICAL(&_bufferMux);
+      DIAG(F("NeoPixel RMT chase cleared VPINs:%u-%u after 60 seconds"),
+           (unsigned int)(_firstVpin + _pixelChaseStart),
+           (unsigned int)(_firstVpin + _pixelChaseStart + _pixelChaseCount - 1));
+      return;
+    }
+
+    if (static_cast<uint32_t>(currentMicros - _pixelChaseLastStepMicros) < 100000UL) {
+      portEXIT_CRITICAL(&_bufferMux);
+      return;
+    }
+    _pixelChaseLastStepMicros = currentMicros;
+    uint16_t pixel = _pixelChaseStart + _pixelChaseIndex;
+    uint16_t chasePixel = _pixelChaseIndex;
+    RGB colour;
+    switch (chasePixel % 3) {
+      case 0: colour = {static_cast<byte>(_pixelChaseBrightness), 0, 0}; break;
+      case 1: colour = {0, static_cast<byte>(_pixelChaseBrightness), 0}; break;
+      default: colour = {0, 0, static_cast<byte>(_pixelChaseBrightness)}; break;
+    }
+    _pixels[pixel] = colour;
+    _on[pixel] = 1;
+    _pixelChaseIndex++;
+    if (_pixelChaseIndex == _pixelChaseCount)
+      _pixelChaseHoldStartedMicros = currentMicros;
+    _framePending = true;
+    portEXIT_CRITICAL(&_bufferMux);
+
+    DIAG(F("NeoPixel RMT chase VPIN:%u RGB:%u,%u,%u"),
+         (unsigned int)(_firstVpin + pixel),
+         (unsigned int)colour.red, (unsigned int)colour.green,
+         (unsigned int)colour.blue);
+  }
+
+  void setFlashColour(byte phase) {
+    RGB colour;
+    switch (phase) {
+      case 0: colour = {_pixelFlashBrightness, _pixelFlashBrightness, _pixelFlashBrightness}; break;
+      case 1: colour = {_pixelFlashBrightness, 0, 0}; break;
+      case 2: colour = {0, _pixelFlashBrightness, 0}; break;
+      case 3: colour = {0, 0, _pixelFlashBrightness}; break;
+      default: colour = {0, 0, 0}; break;
+    }
+    bool on = phase != 4;
+    for (uint16_t index = 0; index < _pixelFlashCount; index++) {
+      uint16_t pixel = _pixelFlashStart + index;
+      _pixels[pixel] = colour;
+      _on[pixel] = on;
+    }
+  }
+
+  void updateFlash(unsigned long currentMicros) {
+    if (!_pixelFlashActive) return;
+
+    portENTER_CRITICAL(&_bufferMux);
+    uint32_t elapsed = static_cast<uint32_t>(currentMicros - _pixelFlashLastStepMicros);
+    if (elapsed < 1000000UL) {
+      portEXIT_CRITICAL(&_bufferMux);
+      return;
+    }
+
+    uint32_t steps = elapsed / 1000000UL;
+    _pixelFlashPhase = (_pixelFlashPhase + steps) % 5;
+    _pixelFlashLastStepMicros += steps * 1000000UL;
+    setFlashColour(_pixelFlashPhase);
+    _framePending = true;
+    portEXIT_CRITICAL(&_bufferMux);
   }
 
   int _read(VPIN vpin) override {
@@ -315,6 +465,19 @@ private:
   bool _is800KHz = true;
   bool _framePending = true;
   bool _transmitting = false;
+  bool _pixelChaseActive = false;
+  bool _pixelFlashActive = false;
+  uint16_t _pixelChaseStart = 0;
+  uint16_t _pixelChaseCount = 0;
+  uint16_t _pixelChaseIndex = 0;
+  uint16_t _pixelFlashStart = 0;
+  uint16_t _pixelFlashCount = 0;
+  byte _pixelFlashPhase = 0;
+  uint8_t _pixelChaseBrightness = 255;
+  uint8_t _pixelFlashBrightness = 255;
+  unsigned long _pixelChaseLastStepMicros = 0;
+  unsigned long _pixelChaseHoldStartedMicros = 0;
+  unsigned long _pixelFlashLastStepMicros = 0;
   volatile bool _rmtReady = false;
   volatile bool _rmtFailed = false;
   portMUX_TYPE _bufferMux = portMUX_INITIALIZER_UNLOCKED;

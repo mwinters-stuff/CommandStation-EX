@@ -476,6 +476,16 @@
 ///param b blue component 0-255
 ///param count... Number of consecutive pixels to set, Default 1.
 
+///brief Scale RGB colour values to the requested brightness for use with NEOPIXEL
+///param level Brightness from 0 (off) to 255 (full)
+///param red Red component 0-255
+///param green Green component 0-255
+///param blue Blue component 0-255
+#define BRIGHTNESS(level,red,green,blue) \
+   (((((red) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255 << 16) | \
+    ((((green) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255 << 8) | \
+    (((blue) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255)
+
 #define NEOPIXEL_SIGNAL(vpin,redcolour,ambercolour,greencolour,description...)
 ///brief Define a signal that uses a single multi colour pixel
 ///see NEORGB
