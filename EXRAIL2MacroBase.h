@@ -464,7 +464,16 @@
 ///param g green component 0-255
 ///param b blue component 0-255
 ///param count Optional number of consecutive pixels to set, default 1
-///param brightness Optional brightness from 0 (off) to 255 (full), default 255
+
+///brief Scale RGB colour values to the requested brightness for use with NEOPIXEL
+///param level Brightness from 0 (off) to 255 (full)
+///param red Red component 0-255
+///param green Green component 0-255
+///param blue Blue component 0-255
+#define BRIGHTNESS(level,red,green,blue) \
+   (((((red) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255 << 16) | \
+    ((((green) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255 << 8) | \
+    (((blue) & 0xff) * ((level) < 0 ? 0 : ((level) > 255 ? 255 : (level))) + 127) / 255)
 
 ///brief Repeatedly light pixels red, green and blue in order
 ///param vpin First VPIN in the pixel range

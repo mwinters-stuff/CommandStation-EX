@@ -1190,18 +1190,12 @@ void RMFT2::loop2() {
     break;
     
   case OPCODE_NEOPIXEL: 
-    // OPCODE_NEOPIXEL,V([-]vpin),OPCODE_PAD,V(colour_RG),OPCODE_PAD,V(colour_B),OPCODE_PAD,V(count),OPCODE_PAD,V(brightness)
+    // OPCODE_NEOPIXEL,V([-]vpin),OPCODE_PAD,V(colour_RG),OPCODE_PAD,V(colour_B),OPCODE_PAD,V(count)
     { 
       VPIN vpin=operand>0?operand:-operand;
       auto count=getOperand(3);
-      auto brightness=getOperand(4);
-      if (brightness>255) brightness=255;
-      uint16_t colourRG=getOperand(1);
-      uint16_t red=((colourRG>>8)*brightness+127)/255;
-      uint16_t green=((colourRG&0xFF)*brightness+127)/255;
-      uint16_t blue=(getOperand(2)*brightness+127)/255;
       killBlinkOnVpin(vpin,count);
-      IODevice::writeAnalogueRange(vpin,(red<<8)|green,operand>0,blue,count);
+      IODevice::writeAnalogueRange(vpin,getOperand(1),operand>0,getOperand(2),count);
     }
     break;
 

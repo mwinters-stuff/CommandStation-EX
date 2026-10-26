@@ -6,7 +6,8 @@ For a directly connected ESP32 pixel string, use the RMT driver instead of a See
 
 `  HAL(NeoPixelRMT,1000,20,18,NEO_GRB)`
 
-The parameters are the first vpin, pixel count, ESP32 data GPIO and optional colour/speed mode. The sender runs on ESP32 core 0; the Arduino application loop runs on core 1. With DCC RMT enabled, this driver reserves channels starting at channel 4, after the channels used by the main and programming tracks. This shared use is supported on the classic ESP32; other ESP32 variants may not have free RMT transmit channels.
+The parameters are the first vpin, pixel count, ESP32 data GPIO and optional colour/speed mode.
+With DCC RMT enabled, this driver reserves channels starting at channel 4, after the channels used by the main and programming tracks. This shared use is supported on the classic ESP32; other ESP32 variants may not have free RMT transmit channels.
 
 For the ESP32 RMT driver, `<o firstVpin CHASE count brightness>` runs the
 red/green/blue test once over the selected pixel range and then clears it.
@@ -56,8 +57,11 @@ must belong to one configured `HAL(NeoPixelRMT,...)` strip.
     pass `--help` for all options.
 
 3. Setting pixels from EXRAIL
-    The new NEOPIXEL macro provides the same functionality as the <o [-]vpin red green blue [count [brightness]]> command above.
-    NEOPIXEL([-]vpin, red, green, blue [,count [,brightness]])
+    The NEOPIXEL macro sets an RGB colour, with an optional count:
+    NEOPIXEL([-]vpin, red, green, blue [,count])
+    To set brightness, BRIGHTNESS scales the RGB values before they are encoded:
+    NEOPIXEL(700, BRIGHTNESS(90,255,50,77), 8)
+    BRIGHTNESS takes a brightness level from 0 to 255 followed by red, green, and blue components from 0 to 255. Brightness values outside the range are clamped.
     
     Setting pixels on or off (without colour change) can be done with SET/RESET [currently there is no set range facility but that may be added as a general exrail thing... watch this space]
 
@@ -79,12 +83,20 @@ must belong to one configured `HAL(NeoPixelRMT,...)` strip.
     For signals with 1 pixel, the NEOPIXEL_SIGNAL macro will create a signal 
 `    NEOPIXEL_SIGNAL(vpin,redfx,amberfx,greenfx)`
 
-    * Changed... *
-    The fx values above can be created by the NeoRGB macro so a bright red would be NeoRGB(255,0,0)  bright green NeoRGB(0,255,0) and amber something like NeoRGB(255,100,0)
-    NeoRGB creates a single int32_t value so it can be used in several ways as convenient.
+    The fx values above can be created by the NeoRGB macro: bright red is
+    `NeoRGB(255,0,0)`, bright green is `NeoRGB(0,255,0)`, and amber can be
+    `NeoRGB(255,100,0)`. To dim a colour, wrap it in `BRIGHTNESS(level,red,green,blue)`
+    inside `NeoRGB`; brightness and colour components range from 0 to 255.
+    `NeoRGB` creates one packed colour value for use in signal definitions.
 ```
 // create 1-lamp signal with NeoRGB colours
 NEOPIXEL_SIGNAL(1000,NeoRGB(255,0,0),NeoRGB(255,100,0),NeoRGB(0,255,0))
+
+// Create a dimmer signal by setting a brightness level per aspect
+NEOPIXEL_SIGNAL(1003,
+  NeoRGB(BRIGHTNESS(90,255,0,0)),
+  NeoRGB(BRIGHTNESS(90,255,100,0)),
+  NeoRGB(BRIGHTNESS(90,0,255,0)))
 
 // Create 1-lamp signal with named colours.
 // This is better if you have multiple signals.
