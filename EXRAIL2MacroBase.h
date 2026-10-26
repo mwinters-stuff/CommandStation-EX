@@ -468,7 +468,7 @@
 ///param steps position to move to
 ///param activity see ROTATE
 
-#define NEOPIXEL(vpin,r,g,b,count...)
+#define NEOPIXEL(...)
 ///brief Set a NEOPIXEL vpin to a given red/green/blue colour
 ///param vpin VPIN of a pixel
 ///param r red component 0-255
