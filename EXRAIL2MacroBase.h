@@ -476,6 +476,12 @@
 ///param b blue component 0-255
 ///param count... Number of consecutive pixels to set, Default 1.
 
+#define NEOPIXEL_BRIGHTNESS(vpin,brightness,count...)
+///brief Set pixel brightness without changing stored RGB or on/off state
+///param vpin VPIN of the first pixel
+///param brightness Brightness from 0 to 255, clamped to this range
+///param count... Number of consecutive pixels to set, Default 1.
+
 ///brief Scale RGB colour values to the requested brightness for use with NEOPIXEL
 ///param level Brightness from 0 (off) to 255 (full)
 ///param red Red component 0-255

@@ -68,6 +68,17 @@ must belong to one configured `HAL(NeoPixelRMT,...)` strip.
     `NEOPIXEL(700, BRIGHTNESS(90,255,50,77), 8)`
     BRIGHTNESS takes a brightness level from 0 to 255 followed by red, green, and blue components from 0 to 255. Brightness values outside the range are clamped.
 
+    To change brightness without supplying RGB again, use:
+    `NEOPIXEL_BRIGHTNESS(vpin, brightness [,count])`
+    Count defaults to 1: `NEOPIXEL_BRIGHTNESS(1000, 64)` dims a single pixel.
+    For example, `NEOPIXEL_BRIGHTNESS(1000, 64, 8)` dims eight consecutive pixels.
+    Brightness is an absolute scale from 0 (dark) to 255 (full), clamped to this
+    range. It preserves each pixel's stored RGB colour and on/off state, including
+    blinking. Use 255 to restore the original colour intensity, even after 0.
+    The scale remains in effect when a new colour is set with NEOPIXEL.
+    Supported by the NeoPixel I2C and ESP32 NeoPixelRMT drivers, including shared
+    VPINs on nodes running firmware with this support.
+
     Setting pixels on or off (without colour change) can be done with SET/RESET [currently there is no set range facility but that may be added as a general exrail thing... watch this space]
 
     Because the pixels obey set/reset, the BLINK command can also be used to control blinking a pixel.

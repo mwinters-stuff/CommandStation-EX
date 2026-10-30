@@ -637,6 +637,10 @@ int RMFT2::onLCCLookup[RMFT2::countLCCLookup];
    NEOPIXEL_RGB(id,(((colour)>>16)&0xff),(((colour)>>8)&0xff),((colour)&0xff),count)
 #define NEOPIXEL_4(id,r,g,b) NEOPIXEL_RGB(id,r,g,b)
 #define NEOPIXEL_5(id,r,g,b,count) NEOPIXEL_RGB(id,r,g,b,count)
+#define NEOPIXEL_BRIGHTNESS(vpin,brightness,count...) \
+   OPCODE_NEOPIXEL_BRIGHTNESS,V(vpin),\
+   OPCODE_PAD,V((brightness) < 0 ? 0 : ((brightness) > 255 ? 255 : (brightness))),\
+   OPCODE_PAD,V(#count[0]?(count+0):1),
 
 #define NEOPIXEL_SIGNAL(sigid,redcolour,ambercolour,greencolour,description...)
 #define NODE_SHARE_SCREEN0(display_id2,count...)

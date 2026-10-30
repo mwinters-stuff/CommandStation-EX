@@ -127,6 +127,7 @@
 #undef MOMENTUM
 #undef MOVETT
 #undef NEOPIXEL
+#undef NEOPIXEL_BRIGHTNESS
 #undef NEOPIXEL_2
 #undef NEOPIXEL_3
 #undef NEOPIXEL_4

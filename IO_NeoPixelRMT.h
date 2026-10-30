@@ -110,6 +110,7 @@ private:
     byte red;
     byte green;
     byte blue;
+    byte brightness;
   };
 
   static constexpr uint16_t TICKS_800_T0H = 14;
@@ -249,6 +250,9 @@ private:
       byte channels[4] = {0, 0, 0, 0};
       if (_frameOn[pixel]) {
         RGB colour = _frame[pixel];
+        colour.red = (colour.red * colour.brightness + 127) / 255;
+        colour.green = (colour.green * colour.brightness + 127) / 255;
+        colour.blue = (colour.blue * colour.brightness + 127) / 255;
         if (_bytesPerPixel == 4 && colour.red == colour.green &&
             colour.red == colour.blue) {
           channels[_whiteOffset] = colour.red;
@@ -346,10 +350,11 @@ private:
     uint16_t chasePixel = _pixelChaseIndex;
     RGB colour;
     switch (chasePixel % 3) {
-      case 0: colour = {static_cast<byte>(_pixelChaseBrightness), 0, 0}; break;
-      case 1: colour = {0, static_cast<byte>(_pixelChaseBrightness), 0}; break;
-      default: colour = {0, 0, static_cast<byte>(_pixelChaseBrightness)}; break;
+      case 0: colour = {static_cast<byte>(_pixelChaseBrightness), 0, 0, 255}; break;
+      case 1: colour = {0, static_cast<byte>(_pixelChaseBrightness), 0, 255}; break;
+      default: colour = {0, 0, static_cast<byte>(_pixelChaseBrightness), 255}; break;
     }
+    colour.brightness = _pixels[pixel].brightness;
     _pixels[pixel] = colour;
     _on[pixel] = 1;
     _pixelChaseIndex++;
@@ -367,15 +372,16 @@ private:
   void setFlashColour(byte phase) {
     RGB colour;
     switch (phase) {
-      case 0: colour = {_pixelFlashBrightness, _pixelFlashBrightness, _pixelFlashBrightness}; break;
-      case 1: colour = {_pixelFlashBrightness, 0, 0}; break;
-      case 2: colour = {0, _pixelFlashBrightness, 0}; break;
-      case 3: colour = {0, 0, _pixelFlashBrightness}; break;
-      default: colour = {0, 0, 0}; break;
+      case 0: colour = {_pixelFlashBrightness, _pixelFlashBrightness, _pixelFlashBrightness, 255}; break;
+      case 1: colour = {_pixelFlashBrightness, 0, 0, 255}; break;
+      case 2: colour = {0, _pixelFlashBrightness, 0, 255}; break;
+      case 3: colour = {0, 0, _pixelFlashBrightness, 255}; break;
+      default: colour = {0, 0, 0, 255}; break;
     }
     bool on = phase != 4;
     for (uint16_t index = 0; index < _pixelFlashCount; index++) {
       uint16_t pixel = _pixelFlashStart + index;
+      colour.brightness = _pixels[pixel].brightness;
       _pixels[pixel] = colour;
       _on[pixel] = on;
     }
@@ -423,10 +429,21 @@ private:
                       uint16_t colourB) override {
     if (_deviceState == DEVSTATE_FAILED || _pixels == nullptr || _on == nullptr) return;
     size_t pixel = vpin - _firstVpin;
+    if (colourB == NEOPIXEL_BRIGHTNESS_COMMAND) {
+      byte brightness = colourRG < 0 ? 0 : (colourRG > 255 ? 255 : colourRG);
+      portENTER_CRITICAL(&_bufferMux);
+      if (_pixels[pixel].brightness != brightness) {
+        _pixels[pixel].brightness = brightness;
+        _framePending = true;
+      }
+      portEXIT_CRITICAL(&_bufferMux);
+      return;
+    }
     RGB colour = {static_cast<byte>((colourRG >> 8) & 0xFF),
                   static_cast<byte>(colourRG & 0xFF),
-                  static_cast<byte>(colourB & 0xFF)};
+                  static_cast<byte>(colourB & 0xFF), 255};
     portENTER_CRITICAL(&_bufferMux);
+    colour.brightness = _pixels[pixel].brightness;
     bool changed = _pixels[pixel].red != colour.red ||
                    _pixels[pixel].green != colour.green ||
                    _pixels[pixel].blue != colour.blue ||
