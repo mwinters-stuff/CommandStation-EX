@@ -3,7 +3,6 @@
  *  © 2022-2023 Colin Murdoch
  *  © 2023 Harald Barth
  *  © 2025 Morten Nielsen
- *  © 2026 Mathew Winters (with Github copilot)
  *  
  *  This file is part of CommandStation-EX
  *
@@ -128,11 +127,8 @@
 #undef MOMENTUM
 #undef MOVETT
 #undef NEOPIXEL
-#undef NEOPIXEL_4
-#undef NEOPIXEL_5
-#undef NEOPIXEL_6
-#undef NEOPIXEL_EXPAND
-#undef NEOPIXEL_EXPAND2
+#undef NEOPIXEL_BRIGHTNESS
+#undef NEOPIXEL_ON
 #undef NEOPIXEL_OFF
 #undef NEOPIXEL_SIGNAL
 #undef NODE_SHARE_SCREEN0
