@@ -16,3 +16,4 @@ venv
 .DS_Store
 .pio-mcp-workspace
 .github
+*_gz.cpp
