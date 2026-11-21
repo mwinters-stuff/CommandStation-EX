@@ -1,5 +1,5 @@
 /*
- *  © 2026 Mathew Winters (with Github copilot)
+ *  © 2026 Mathew Winters
  *
  *  All rights reserved.
  *

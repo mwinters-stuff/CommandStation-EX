@@ -1,13 +1,12 @@
 /*
- *  © 2026 Mathew Winters (with Github copilot)
+ *  © 2026 Mathew Winters
  *  © 2024 Morten "Doc" Nielsen
  *  © 2023-2024 Paul M. Antoine
  *  © 2022 Bruno Sanches
  *  © 2021 Fred Decker
  *  © 2020-2022 Harald Barth
- *  © 2020-2024 Chris Harlow
+ *  © 2020-2026 Chris Harlow
  *  © 2020 Gregor Baues
- * 
  *  All rights reserved.
  *  
  *  This file is part of DCC-EX/CommandStation-EX
@@ -45,6 +44,59 @@ extern "C" struct netif gnetif;
 EthernetUDP udpMdns;
 MDNS mdns(udpMdns);
 
+struct UdpListener {
+  EthernetUDP udp;
+  uint16_t port = 0;
+};
+static UdpListener udpListeners[2];
+
+bool EthernetInterface::startUDPListener(const IPAddress &group, uint16_t port) {
+  for (auto &listener : udpListeners) {
+    if (listener.port) continue;
+    if (!listener.udp.beginMulticast(group, port)) {
+      listener.udp.stop();
+      return false;
+    }
+    listener.port = port;
+    return true;
+  }
+  DIAG(F("No free UDP listener for port %d"), port);
+  return false;
+}
+
+void EthernetInterface::stopUDPListeners() {
+  for (auto &listener : udpListeners) {
+    listener.udp.stop();
+    listener.port = 0;
+  }
+}
+
+bool EthernetInterface::receiveUDPPacket(EXNetworkUdpPacket &packet) {
+  for (auto &listener : udpListeners) {
+    if (!listener.port) continue;
+    while (listener.udp.parsePacket() > 0) {
+      int packetSize = listener.udp.available();
+      if (packetSize <= 2) {
+        listener.udp.flush();
+        continue;
+      }
+      int length = listener.udp.read(packet.data, EXNETWORK_UDP_MAX_SIZE);
+      packet.remoteIP = listener.udp.remoteIP();
+      if (length < packetSize) {
+        DIAG(F("Short UDP packet read %d < %d from %s"), length, packetSize,
+             packet.remoteIP.toString().c_str());
+        listener.udp.flush();
+        continue;
+      }
+      packet.length = length;
+      packet.data[length] = 0;
+      packet.localPort = listener.port;
+      return true;
+    }
+  }
+  return false;
+}
+
 bool EthernetInterface::connected=false;
 bool EthernetInterface::isUp() { 
   return connected;
@@ -77,6 +129,11 @@ bool EthernetInterface::setup()
   // but its hash-filter path is unreliable on this MAC. This does not enable
   // promiscuous unicast reception.
   ETH->MACFFR |= (1UL << 4);
+  #endif
+
+  #ifndef ETHERNET_CS_PIN
+  // The link-state handler enables IGMP before multicast listeners are started.
+  Ethernet.schedule();
   #endif
 
   LCD(7, F("IP: %s"), Ethernet.localIP().toString().c_str());
@@ -151,9 +208,16 @@ void EthernetInterface::loop()
 #include <SPI.h>
 #include <Ethernet.h>
 #include <EthernetUdp.h>
+#ifdef ETHERNET_W5500_RX_DIAG_PORT
+#include <utility/w5100.h>
+#endif
+#if __has_include(<esp_mac.h>)
+#include <esp_mac.h>
+#else
+#include <esp_system.h>
+#endif
 
 #include "DIAG.h"
-#include "DCCTimer.h"
 #include "EXmDNS.h"
 #include "EXNetworkPreferences.h"
 
@@ -178,11 +242,139 @@ void EthernetInterface::loop()
 EthernetUDP udpMdns;
 MDNS mdns(udpMdns);
 
+struct UdpListener {
+  EthernetUDP udp;
+  IPAddress group;
+  uint16_t port = 0;
+#ifdef ETHERNET_W5500_RX_DIAG_PORT
+  uint8_t diagSocket = MAX_SOCK_NUM;
+  unsigned long lastStallLog = 0;
+#endif
+};
+static UdpListener udpListeners[2];
+
+#ifdef ETHERNET_W5500_RX_DIAG_PORT
+static uint8_t logW5500Socket(uint16_t port) {
+  if (Ethernet.hardwareStatus() != EthernetW5500) {
+    DIAG(F("W5500 RX diagnostic unavailable: controller is not a W5500"));
+    return MAX_SOCK_NUM;
+  }
+  SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+  for (uint8_t socket = 0; socket < MAX_SOCK_NUM; ++socket) {
+    if (W5100.readSnPORT(socket) != port) continue;
+    const unsigned int status = W5100.readSnSR(socket);
+    if (status == SnSR::CLOSED) continue;
+    const unsigned int mode = W5100.readSnMR(socket);
+    uint8_t dst[4];
+    W5100.readSnDIPR(socket, dst);
+    const uint16_t dstPort = W5100.readSnDPORT(socket);
+    const uint16_t queued = W5100.readSnRX_RSR(socket);
+    SPI.endTransaction();
+    DIAG(F("W5500 socket %d port %d: status 0x%x mode 0x%x dst %s:%d queued %d"),
+         socket, port, status, mode, IPAddress(dst).toString().c_str(), dstPort, queued);
+    return socket;
+  }
+  SPI.endTransaction();
+  DIAG(F("W5500 RX diagnostic: no open socket for port %d"), port);
+  return MAX_SOCK_NUM;
+}
+
+static int parseW5500Packet(UdpListener &listener) {
+  const auto socket = listener.diagSocket;
+  if (socket == MAX_SOCK_NUM) return listener.udp.parsePacket();
+
+  SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
+  const uint16_t queued = W5100.readSnRX_RSR(socket);
+  SPI.endTransaction();
+  const int parsed = listener.udp.parsePacket();
+  if (queued > 0 || parsed > 0) {
+    const auto now = millis();
+    if (parsed > 0 || now - listener.lastStallLog >= 1000) {
+      if (parsed <= 0) listener.lastStallLog = now;
+      DIAG(F("W5500 RX socket %d port %d: queued %d parsed %d"),
+           socket, listener.port, queued, parsed);
+    }
+  }
+  return parsed;
+}
+#endif
+
 bool EthernetInterface::connected = false;
 static bool ethernetLinkLost = false;
 static bool ethernetLinkRestored = false;
 bool EthernetInterface::isUp() {
   return connected;
+}
+
+bool EthernetInterface::startUDPListener(const IPAddress &group, uint16_t port) {
+  for (auto &listener : udpListeners) {
+    if (listener.port) continue;
+    if (!listener.udp.beginMulticast(group, port)) {
+      listener.udp.stop();
+      return false;
+    }
+    listener.group = group;
+    listener.port = port;
+#ifdef ETHERNET_W5500_RX_DIAG_PORT
+    listener.diagSocket = MAX_SOCK_NUM;
+    if (port == ETHERNET_W5500_RX_DIAG_PORT) {
+      listener.diagSocket = logW5500Socket(port);
+      listener.lastStallLog = millis() - 1000UL;
+    }
+#endif
+    return true;
+  }
+  DIAG(F("No free UDP listener for port %d"), port);
+  return false;
+}
+
+void EthernetInterface::stopUDPListeners() {
+  for (auto &listener : udpListeners) {
+    listener.udp.stop();
+    listener.port = 0;
+  }
+}
+
+bool EthernetInterface::receiveUDPPacket(EXNetworkUdpPacket &packet) {
+  for (auto &listener : udpListeners) {
+    if (!listener.port) continue;
+#ifdef ETHERNET_W5500_RX_DIAG_PORT
+    while (parseW5500Packet(listener) > 0) {
+#else
+    while (listener.udp.parsePacket() > 0) {
+#endif
+      int packetSize = listener.udp.available();
+      if (packetSize <= 2) {
+        listener.udp.flush();
+        continue;
+      }
+      int length = listener.udp.read(packet.data, EXNETWORK_UDP_MAX_SIZE);
+      packet.remoteIP = listener.udp.remoteIP();
+      if (length < packetSize) {
+        DIAG(F("Short UDP packet read %d < %d from %s"), length, packetSize,
+             packet.remoteIP.toString().c_str());
+        listener.udp.flush();
+        continue;
+      }
+      packet.length = length;
+      packet.data[length] = 0;
+      packet.localPort = listener.port;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool EthernetInterface::sendUDPMulticast(const IPAddress &group, uint16_t port, const uint8_t *data, size_t len) {
+  for (auto &listener : udpListeners) {
+    if (!listener.port || listener.port != port || listener.group != group) continue;
+    // Keep the W5500 socket's multicast destination and MAC paired.
+    return listener.udp.beginPacket(group, port)
+      && listener.udp.write(data, len) == len
+      && listener.udp.endPacket();
+  }
+  DIAG(F("Ethernet: no multicast socket for %s:%d"), group.toString().c_str(), port);
+  return false;
 }
 
 bool EthernetInterface::setup()
@@ -235,7 +427,11 @@ bool EthernetInterface::setup()
 
   DIAG(F("Ethernet: Link Found"));
   byte mac[6];
-  DCCTimer::getSimulatedMacAddress(mac);
+  const esp_err_t macResult = esp_read_mac(mac, ESP_MAC_ETH);
+  if (macResult != ESP_OK) {
+    DIAG(F("Ethernet: cannot read ESP32 Ethernet MAC (%d), falling back to WiFi"), macResult);
+    return false;
+  }
 
   #ifdef IP_ADDRESS
     static IPAddress myIP(IP_ADDRESS);

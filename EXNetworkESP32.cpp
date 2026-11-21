@@ -1,7 +1,5 @@
 /*
- *  © 2024 Harald Barth
- *  © 2024 Paul M. Antoine
- *  © 2026 Chris Harlow (with Github copilot)
+ *  © 2026 Mathew Winters
  *
  *  All rights reserved.
  *
@@ -53,6 +51,23 @@ IPAddress EXNetworkShimESP32::getIPAddress() {
   return exNetworkUsingEthernet
     ? EthernetInterface::getIPAddress()
     : WifiESP::getIPAddress();
+}
+
+bool EXNetworkShimESP32::startUDPListener(const IPAddress &group, uint16_t port) {
+  return exNetworkUsingEthernet
+    ? EthernetInterface::startUDPListener(group, port)
+    : WifiESP::startUDPListener(group, port);
+}
+
+void EXNetworkShimESP32::stopUDPListeners() {
+  if (exNetworkUsingEthernet) EthernetInterface::stopUDPListeners();
+  else WifiESP::stopUDPListeners();
+}
+
+bool EXNetworkShimESP32::receiveUDPPacket(EXNetworkUdpPacket &packet) {
+  return exNetworkUsingEthernet
+    ? EthernetInterface::receiveUDPPacket(packet)
+    : WifiESP::receiveUDPPacket(packet);
 }
 
 void EXNetworkShimESP32::setupMDNS() {

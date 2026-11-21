@@ -5,7 +5,6 @@
  *  © 2020-2021 Fred Decker
  *  © 2020-2026 Chris Harlow
  *  © 2023 Nathan Kellenicki
- *  © 2026 Mathew Winters (with Github copilot)
  *  
  *  This file is part of CommandStation-EX
  *
@@ -308,8 +307,8 @@ The configuration file for DCC-EX Command Station
 
 /////////////////////////////////////////////////////////////////////////////////////
 //
-// ESP32 always probes for a W5500 before starting WiFi. These pins default to
-// the EX-CSB1 wiring and can be overridden for other ESP32/W5500 boards.
+// ESP32 probes for a W5500 before starting WiFi. These pins default to the
+// EX-CSB1 wiring and can be overridden for other ESP32/W5500 boards.
 #if defined(ARDUINO_ARCH_ESP32)
   #ifndef ETHERNET_CS_PIN
     #define ETHERNET_CS_PIN   5
@@ -324,15 +323,12 @@ The configuration file for DCC-EX Command Station
     #define ETHERNET_MOSI_PIN 17
   #endif
   #ifndef ETHERNET_RST_PIN
-    #define ETHERNET_RST_PIN  4   // or -1 if not connected
+    #define ETHERNET_RST_PIN  4
   #endif
-  // To disable hardware reset handling, set: -DETHERNET_RST_PIN=-1
+  // Disable hardware reset handling with -DETHERNET_RST_PIN=-1.
 #endif
 
-// OTA_AUTH: Set this to your desired password if you wish to secure OTA updates.
-// If not set, OTA updates will be password-free.
-// Note: Upon modifying the OTA password, ensure to update the "upload_flags → --auth"
-// in the relevant environment within the platformio.ini file.
-// To deactivate OTA authorization, comment out the line below and comment out
-// the "upload_flags" line in the platformio.ini file.
+// Set OTA_AUTH to a password to secure OTA updates. Update the upload --auth
+// flag in your PlatformIO environment to match, or comment both out to disable authorization.
 #define OTA_AUTH "dccex-ota"
+/////////////////////////////////////////////////////////////////////////////////////

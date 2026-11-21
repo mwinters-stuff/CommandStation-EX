@@ -1,8 +1,8 @@
 /*
  *  © 2024 Harald Barth
  *  © 2024 Paul M. Antoine
- *  © 2026 Mathew Winters (with Github copilot)
- *
+ *  © 2026 Mathew Winters
+ * 
  *  All rights reserved.
  *
  *  This file is part of CommandStation-EX
